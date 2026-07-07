@@ -1,21 +1,13 @@
-# Next.js template
+# Taskmaster AI
 
-This is a Next.js template with shadcn/ui.
+Taskmaster AI is an AI-assisted task management app that helps users prioritize tasks, break down work, receive suggestions, and stay motivated through personalized feedback.
 
-## Adding components
+## Core Features
 
-To add components to your app, run the following command:
-
-```bash
-npx shadcn@latest add button
-```
-
-This will place the ui components in the `components` directory.
-
-## Using components
-
-To use the components in your app, import them as follows:
-
-```tsx
-import { Button } from "@/components/ui/button";
-```
+- Create and manage tasks
+- AI-suggested priority levels
+- AI-generated task completion suggestions
+- Daily suggested task order
+- Task notes and resources
+- Completion encouragement messages
+- User accounts and saved task lists
