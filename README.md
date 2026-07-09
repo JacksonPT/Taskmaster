@@ -117,4 +117,6 @@ Initialized with Next.js, TypeScript, Tailwind CSS, shadcn/ui, Base UI, ESLint, 
 
 The public landing page now introduces the product with a branded hero, temporary logo mark, tagline, login call-to-action, and task preview card.
 
-Next step: build the first task UI with temporary data.
+The temporary task workspace at `/tasks` now uses mock task data to render task cards, priority labels, statuses, AI suggestion copy, and dashboard counters.
+
+Next step: add task create, edit, delete, and complete interactions with local state.
