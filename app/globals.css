@@ -14,6 +14,12 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  /*
+    Tailwind reads variables with the --color-* pattern and turns them into
+    utility classes. Example: --color-app-card creates bg-app-card,
+    text-app-card, and border-app-card.
+  */
+
   /* Font tokens from app/layout.tsx. */
   --font-heading: var(--font-display);
   --font-sans: var(--font-sans);
@@ -81,6 +87,9 @@
 
     Use these in components when styling branded app screens:
     bg-app-background, bg-app-card, border-app-border, text-brand-primary, etc.
+
+    These variables hold the actual color values. The @theme block above exposes
+    them to Tailwind class names.
   */
   --app-background: #070b10;
   --app-foreground: #f5f5f4;

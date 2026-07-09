@@ -10,9 +10,11 @@ import {
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
+// These union types limit tasks to known values instead of any random string.
 export type TaskPriority = "High" | "Medium" | "Low"
 export type TaskStatus = "Todo" | "In Progress" | "Done"
 
+// Task describes the shape of one task throughout the UI.
 export type Task = {
   id: number
   title: string
@@ -23,12 +25,15 @@ export type Task = {
   aiSuggestion: string
 }
 
+// Record<TaskPriority, string> means every priority must have a style.
+// TypeScript will warn us if we add a new priority and forget its class names.
 const priorityStyles: Record<TaskPriority, string> = {
   High: "border-red-300/30 bg-red-400/10 text-red-100",
   Medium: "border-amber-300/30 bg-amber-400/10 text-amber-100",
   Low: "border-emerald-300/30 bg-emerald-400/10 text-emerald-100",
 }
 
+// Each status gets its own icon component from lucide-react.
 const statusIcons: Record<TaskStatus, typeof Circle> = {
   Todo: Circle,
   "In Progress": Sparkles,
@@ -37,6 +42,7 @@ const statusIcons: Record<TaskStatus, typeof Circle> = {
 
 type TaskCardProps = {
   task: Task
+  // The card displays buttons, but the dashboard owns the actual state changes.
   onDelete: (taskId: number) => void
   onEdit: (task: Task) => void
   onToggleComplete: (taskId: number) => void
@@ -55,6 +61,7 @@ export function TaskCard({
     <article
       className={cn(
         "rounded-3xl border border-app-border bg-app-card p-5 shadow-xl shadow-black/20",
+        // Completed tasks stay visible, but muted so active tasks have more attention.
         isDone && "border-white/10 bg-app-completed opacity-70"
       )}
     >

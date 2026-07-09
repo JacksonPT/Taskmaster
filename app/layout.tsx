@@ -5,6 +5,8 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
 
+// next/font loads fonts through Next.js so the browser does not need separate
+// Google Font network requests. The variable names are used in globals.css.
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" })
 
 const fontDisplay = Rajdhani({
@@ -18,6 +20,7 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
+// Metadata controls the browser tab title and default page description.
 export const metadata: Metadata = {
   title: "Taskmaster | AI Powered Productivity",
   description:
@@ -30,6 +33,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
+    // Root layouts must include html and body tags in the App Router.
     <html
       lang="en"
       suppressHydrationWarning
@@ -41,6 +45,7 @@ export default function RootLayout({
       )}
     >
       <body>
+        {/* ThemeProvider enables light/dark theme handling for shadcn components. */}
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

@@ -1,5 +1,6 @@
 "use client"
 
+// This component needs useState and event handlers, so it must be a Client Component.
 import { type FormEvent, useState } from "react"
 import { ArrowLeft, ListChecks, Plus, Timer, Trophy, X } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
@@ -19,8 +20,10 @@ type TaskFormState = {
   dueDate: string
 }
 
+// This tracks which form panel should be visible. null means no form is open.
 type ActivePanel = "add" | "edit" | null
 
+// Temporary seed data. Later, this will come from PostgreSQL through Prisma.
 const initialTasks: Task[] = [
   {
     id: 1,
@@ -72,6 +75,7 @@ const emptyForm: TaskFormState = {
   dueDate: "Today",
 }
 
+// Shared field classes keep inputs/selects visually consistent.
 const fieldClass =
   "w-full rounded-2xl border border-app-border bg-white/[0.06] px-4 py-3 text-sm text-white outline-none transition placeholder:text-stone-500 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
 
@@ -95,6 +99,7 @@ function StatCard({ icon: Icon, label, value }: StatCardProps) {
   )
 }
 
+// This is not real AI yet. It gives us realistic UI behavior until the AI API is added.
 function buildTemporaryAiSuggestion(task: TaskFormState) {
   if (task.priority === "High") {
     return "Start this early and define the first concrete action before doing lower-priority work."
@@ -108,9 +113,16 @@ function buildTemporaryAiSuggestion(task: TaskFormState) {
 }
 
 export function TaskDashboard() {
+  // tasks is the current in-browser task list. It resets on refresh until we add a database.
   const [tasks, setTasks] = useState(initialTasks)
+
+  // form stores the current values typed into the add/edit form fields.
   const [form, setForm] = useState<TaskFormState>(emptyForm)
+
+  // activePanel keeps add and edit from being open at the same time.
   const [activePanel, setActivePanel] = useState<ActivePanel>(null)
+
+  // editingTaskId tells the submit handler which task should be updated.
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
 
   // These stats are derived from state, so they update automatically after every task action.
@@ -119,17 +131,22 @@ export function TaskDashboard() {
   const highPriorityCount = tasks.filter(
     (task) => task.priority === "High"
   ).length
+
+  // Copy before sorting because Array.sort() mutates the array it runs on.
+  // Done tasks convert to 1, active tasks convert to 0, so active tasks sort first.
   const orderedTasks = [...tasks].sort(
     (taskA, taskB) =>
       Number(taskA.status === "Done") - Number(taskB.status === "Done")
   )
 
+  // Resetting means closing any panel and clearing the form back to default values.
   function resetForm() {
     setForm(emptyForm)
     setActivePanel(null)
     setEditingTaskId(null)
   }
 
+  // Opening add clears any existing edit state so add/edit panels stay mutually exclusive.
   function openAddPanel() {
     setForm(emptyForm)
     setEditingTaskId(null)
@@ -137,6 +154,7 @@ export function TaskDashboard() {
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    // Prevent the browser's default page refresh so React can handle the form in memory.
     event.preventDefault()
 
     const title = form.title.trim()
@@ -146,6 +164,7 @@ export function TaskDashboard() {
       return
     }
 
+    // If the edit panel is active, update the matching task instead of creating a new one.
     if (activePanel === "edit" && editingTaskId) {
       setTasks((currentTasks) =>
         currentTasks.map((task) =>
@@ -165,12 +184,16 @@ export function TaskDashboard() {
       return
     }
 
+    // Safety guard: do not create a task unless the add panel submitted the form.
     if (activePanel !== "add") {
       return
     }
 
+    // Generate a temporary numeric id from the largest current id.
+    // A real database will generate ids later.
     const nextId = Math.max(0, ...tasks.map((task) => task.id)) + 1
 
+    // Add the new task at the top of the list so it appears immediately.
     setTasks((currentTasks) => [
       {
         id: nextId,
@@ -187,6 +210,7 @@ export function TaskDashboard() {
     resetForm()
   }
 
+  // Load the selected task into the form, then show the edit panel.
   function handleEdit(task: Task) {
     setActivePanel("edit")
     setEditingTaskId(task.id)
@@ -198,6 +222,7 @@ export function TaskDashboard() {
     })
   }
 
+  // Delete uses filter to create a new array without the removed task.
   function handleDelete(taskId: number) {
     setTasks((currentTasks) =>
       currentTasks.filter((task) => task.id !== taskId)
@@ -208,6 +233,7 @@ export function TaskDashboard() {
     }
   }
 
+  // Toggle complete keeps the task but switches between Done and Todo.
   function handleToggleComplete(taskId: number) {
     setTasks((currentTasks) =>
       currentTasks.map((task) =>
@@ -218,9 +244,12 @@ export function TaskDashboard() {
     )
   }
 
+  // Main dashboard render. This JSX controls what the user sees on `/tasks`:
+  // page shell, back navigation, stats, add/edit controls, form, and task cards.
   return (
     <main className="min-h-svh bg-app-background bg-[radial-gradient(circle_at_top_left,rgba(251,191,117,0.08),transparent_32%)] px-6 py-8 text-app-foreground sm:px-8 lg:px-12">
       <div className="mx-auto max-w-6xl">
+        {/* Back navigation: lets the user return to the marketing/landing page. */}
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-sm text-stone-400 transition hover:text-brand-primary"
@@ -229,6 +258,7 @@ export function TaskDashboard() {
           Back to landing page
         </Link>
 
+        {/* Header area: explains the dashboard and shows live stats from task state. */}
         <section className="mt-10 grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
           <div>
             <p className="font-heading text-sm font-semibold tracking-[0.42em] text-brand-primary/90 uppercase">
@@ -258,13 +288,14 @@ export function TaskDashboard() {
           </div>
         </section>
 
+        {/* Task controls: opens the create panel without showing the form by default. */}
         <div className="mt-12 flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="font-heading text-xs font-semibold tracking-[0.3em] text-brand-soft uppercase">
               Manage tasks
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-white">
-              Open the add form when you need it
+              To create new tasks select Add Task
             </h2>
           </div>
           <Button
@@ -273,10 +304,11 @@ export function TaskDashboard() {
             onClick={openAddPanel}
           >
             <Plus />
-            Add task
+            Add Task
           </Button>
         </div>
 
+        {/* Add/edit panel: appears only when the user is creating or editing a task. */}
         {activePanel ? (
           <section className="mt-6 rounded-[2rem] border border-app-border bg-app-surface p-5 shadow-xl shadow-black/20">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -302,6 +334,7 @@ export function TaskDashboard() {
               </Button>
             </div>
 
+            {/* Controlled form: every field reads from `form` state and updates it on change. */}
             <form
               onSubmit={handleSubmit}
               className="mt-6 grid gap-4 lg:grid-cols-4"
@@ -390,6 +423,7 @@ export function TaskDashboard() {
           </section>
         ) : null}
 
+        {/* Task grid: renders the sorted task list and wires each card to dashboard actions. */}
         <section className="mt-12 grid gap-6 md:grid-cols-2">
           {orderedTasks.map((task) => (
             <TaskCard

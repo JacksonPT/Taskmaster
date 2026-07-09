@@ -2,6 +2,8 @@ import { ArrowRight, CheckCircle2, LockKeyhole } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
+// This temporary SVG gives the app a logo-like mark before a final image asset exists.
+// Because it is inline SVG, we can style it with CSS variables from globals.css.
 function TaskmasterMark() {
   return (
     <svg
@@ -42,9 +44,11 @@ export default function Page() {
   return (
     <main className="min-h-svh overflow-hidden bg-app-background text-app-foreground">
       <section className="relative flex min-h-svh items-center justify-center px-6 py-16 sm:px-8">
+        {/* Decorative background layers. They sit behind the content because the content wrapper is relative. */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#403029_0%,transparent_34%),linear-gradient(135deg,rgba(251,191,117,0.16),transparent_28%),linear-gradient(225deg,rgba(255,255,255,0.08),transparent_24%)]" />
         <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-app-background to-transparent" />
 
+        {/* The landing hero uses one column on mobile and two columns on large screens. */}
         <div className="relative grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="mx-auto flex max-w-2xl flex-col items-center text-center lg:items-start lg:text-left">
             <TaskmasterMark />
@@ -66,6 +70,7 @@ export default function Page() {
             </p>
 
             <div className="mt-9 flex w-full max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row">
+              {/* This is a UI placeholder until Clerk authentication is added. */}
               <Button
                 type="button"
                 size="lg"
@@ -91,6 +96,7 @@ export default function Page() {
             </p>
           </div>
 
+          {/* Static preview card: it communicates the future product before real task data exists. */}
           <div className="mx-auto w-full max-w-md rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-black/30 backdrop-blur">
             <div className="rounded-[1.5rem] border border-white/10 bg-app-surface/90 p-5">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
@@ -108,6 +114,7 @@ export default function Page() {
               </div>
 
               <div className="mt-5 space-y-3">
+                {/* Mapping over temporary preview rows keeps repeated card markup in one place. */}
                 {[
                   [
                     "High",
