@@ -119,6 +119,10 @@ export function TaskDashboard() {
   const highPriorityCount = tasks.filter(
     (task) => task.priority === "High"
   ).length
+  const orderedTasks = [...tasks].sort(
+    (taskA, taskB) =>
+      Number(taskA.status === "Done") - Number(taskB.status === "Done")
+  )
 
   function resetForm() {
     setForm(emptyForm)
@@ -387,7 +391,7 @@ export function TaskDashboard() {
         ) : null}
 
         <section className="mt-12 grid gap-6 md:grid-cols-2">
-          {tasks.map((task) => (
+          {orderedTasks.map((task) => (
             <TaskCard
               key={task.id}
               task={task}
