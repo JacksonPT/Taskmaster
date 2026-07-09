@@ -19,6 +19,8 @@ type TaskFormState = {
   dueDate: string
 }
 
+type ActivePanel = "add" | "edit" | null
+
 const initialTasks: Task[] = [
   {
     id: 1,
@@ -73,6 +75,26 @@ const emptyForm: TaskFormState = {
 const fieldClass =
   "w-full rounded-2xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm text-white outline-none transition placeholder:text-stone-500 focus:border-amber-100/50 focus:ring-4 focus:ring-amber-100/10"
 
+type StatCardProps = {
+  icon: LucideIcon
+  label: string
+  value: number
+}
+
+function StatCard({ icon: Icon, label, value }: StatCardProps) {
+  return (
+    <div className="rounded-3xl border border-white/15 bg-[#151922] p-5 shadow-lg shadow-black/15">
+      <Icon className="size-5 text-amber-200" />
+      <p className="mt-4 text-4xl font-bold tracking-tight text-white">
+        {value}
+      </p>
+      <p className="mt-2 text-xs font-semibold tracking-[0.18em] text-stone-300 uppercase">
+        {label}
+      </p>
+    </div>
+  )
+}
+
 function buildTemporaryAiSuggestion(task: TaskFormState) {
   if (task.priority === "High") {
     return "Start this early and define the first concrete action before doing lower-priority work."
@@ -88,6 +110,7 @@ function buildTemporaryAiSuggestion(task: TaskFormState) {
 export function TaskDashboard() {
   const [tasks, setTasks] = useState(initialTasks)
   const [form, setForm] = useState<TaskFormState>(emptyForm)
+  const [activePanel, setActivePanel] = useState<ActivePanel>(null)
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
 
   // These stats are derived from state, so they update automatically after every task action.
@@ -99,7 +122,14 @@ export function TaskDashboard() {
 
   function resetForm() {
     setForm(emptyForm)
+    setActivePanel(null)
     setEditingTaskId(null)
+  }
+
+  function openAddPanel() {
+    setForm(emptyForm)
+    setEditingTaskId(null)
+    setActivePanel("add")
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -112,7 +142,7 @@ export function TaskDashboard() {
       return
     }
 
-    if (editingTaskId) {
+    if (activePanel === "edit" && editingTaskId) {
       setTasks((currentTasks) =>
         currentTasks.map((task) =>
           task.id === editingTaskId
@@ -128,6 +158,10 @@ export function TaskDashboard() {
         )
       )
       resetForm()
+      return
+    }
+
+    if (activePanel !== "add") {
       return
     }
 
@@ -150,6 +184,7 @@ export function TaskDashboard() {
   }
 
   function handleEdit(task: Task) {
+    setActivePanel("edit")
     setEditingTaskId(task.id)
     setForm({
       title: task.title,
@@ -178,27 +213,6 @@ export function TaskDashboard() {
       )
     )
   }
-
-  type StatCardProps = {
-    icon: LucideIcon
-    label: string
-    value: number
-  }
-  
-  function StatCard({ icon: Icon, label, value }: StatCardProps) {
-    return (
-      <div className="rounded-3xl border border-white/15 bg-[#151922] p-5 shadow-lg shadow-black/15">
-        <Icon className="size-5 text-amber-200" />
-        <p className="mt-4 text-4xl font-bold tracking-tight text-white">
-          {value}
-        </p>
-        <p className="mt-2 text-xs font-semibold tracking-[0.18em] text-stone-300 uppercase">
-          {label}
-        </p>
-      </div>
-    )
-  }
-
 
   return (
     <main className="min-h-svh bg-[#070b10] bg-[radial-gradient(circle_at_top_left,rgba(251,191,117,0.08),transparent_32%)] px-6 py-8 text-stone-100 sm:px-8 lg:px-12">
@@ -240,18 +254,39 @@ export function TaskDashboard() {
           </div>
         </section>
 
-        <section className="mt-12 rounded-[2rem] border border-white/15 bg-[#10151d] p-5 shadow-xl shadow-black/20">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="font-heading text-xs font-semibold tracking-[0.3em] text-amber-100/70 uppercase">
-                {editingTaskId ? "Editing task" : "Create task"}
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">
-                {editingTaskId ? "Update this task" : "Add a new task"}
-              </h2>
-            </div>
+        <div className="mt-12 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="font-heading text-xs font-semibold tracking-[0.3em] text-amber-100/70 uppercase">
+              Manage tasks
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold text-white">
+              Open the add form when you need it
+            </h2>
+          </div>
+          <Button
+            type="button"
+            className="h-11 rounded-full bg-amber-100 px-5 text-stone-950 hover:bg-amber-200"
+            onClick={openAddPanel}
+          >
+            <Plus />
+            Add task
+          </Button>
+        </div>
 
-            {editingTaskId ? (
+        {activePanel ? (
+          <section className="mt-6 rounded-[2rem] border border-white/15 bg-[#10151d] p-5 shadow-xl shadow-black/20">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-heading text-xs font-semibold tracking-[0.3em] text-amber-100/70 uppercase">
+                  {activePanel === "edit" ? "Editing task" : "Create task"}
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-white">
+                  {activePanel === "edit"
+                    ? "Update this task"
+                    : "Add a new task"}
+                </h2>
+              </div>
+
               <Button
                 type="button"
                 variant="outline"
@@ -259,95 +294,97 @@ export function TaskDashboard() {
                 onClick={resetForm}
               >
                 <X />
-                Cancel edit
-              </Button>
-            ) : null}
-          </div>
-
-          <form
-            onSubmit={handleSubmit}
-            className="mt-6 grid gap-4 lg:grid-cols-4"
-          >
-            <label className="lg:col-span-2">
-              <span className="text-sm font-medium text-stone-300">Title</span>
-              <input
-                className="mt-2 w-full rounded-2xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm text-white transition outline-none placeholder:text-stone-500 focus:border-amber-100/50 focus:ring-4 focus:ring-amber-100/10"
-                value={form.title}
-                onChange={(event) =>
-                  setForm((currentForm) => ({
-                    ...currentForm,
-                    title: event.target.value,
-                  }))
-                }
-                placeholder="Example: Finish project proposal"
-              />
-            </label>
-
-            <label>
-              <span className="text-sm font-medium text-stone-300">
-                Priority
-              </span>
-              <select
-                className={`${fieldClass} mt-2`}
-                value={form.priority}
-                onChange={(event) =>
-                  setForm((currentForm) => ({
-                    ...currentForm,
-                    priority: event.target.value as TaskPriority,
-                  }))
-                }
-              >
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-              </select>
-            </label>
-
-            <label>
-              <span className="text-sm font-medium text-stone-300">
-                Due date
-              </span>
-              <input
-                className={`${fieldClass} mt-2`}
-                value={form.dueDate}
-                onChange={(event) =>
-                  setForm((currentForm) => ({
-                    ...currentForm,
-                    dueDate: event.target.value,
-                  }))
-                }
-                placeholder="Today"
-              />
-            </label>
-
-            <label className="lg:col-span-4">
-              <span className="text-sm font-medium text-stone-300">
-                Description
-              </span>
-              <textarea
-                className={`${fieldClass} mt-2 min-h-28 resize-y`}
-                value={form.description}
-                onChange={(event) =>
-                  setForm((currentForm) => ({
-                    ...currentForm,
-                    description: event.target.value,
-                  }))
-                }
-                placeholder="What needs to happen?"
-              />
-            </label>
-
-            <div className="lg:col-span-4">
-              <Button
-                type="submit"
-                className="h-11 rounded-full bg-amber-100 px-5 text-stone-950 hover:bg-amber-200"
-              >
-                <Plus />
-                {editingTaskId ? "Save changes" : "Add task"}
+                Cancel
               </Button>
             </div>
-          </form>
-        </section>
+
+            <form
+              onSubmit={handleSubmit}
+              className="mt-6 grid gap-4 lg:grid-cols-4"
+            >
+              <label className="lg:col-span-2">
+                <span className="text-sm font-medium text-stone-300">
+                  Title
+                </span>
+                <input
+                  className="mt-2 w-full rounded-2xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm text-white transition outline-none placeholder:text-stone-500 focus:border-amber-100/50 focus:ring-4 focus:ring-amber-100/10"
+                  value={form.title}
+                  onChange={(event) =>
+                    setForm((currentForm) => ({
+                      ...currentForm,
+                      title: event.target.value,
+                    }))
+                  }
+                  placeholder="Example: Finish project proposal"
+                />
+              </label>
+
+              <label>
+                <span className="text-sm font-medium text-stone-300">
+                  Priority
+                </span>
+                <select
+                  className={`${fieldClass} mt-2`}
+                  value={form.priority}
+                  onChange={(event) =>
+                    setForm((currentForm) => ({
+                      ...currentForm,
+                      priority: event.target.value as TaskPriority,
+                    }))
+                  }
+                >
+                  <option value="High">High</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Low">Low</option>
+                </select>
+              </label>
+
+              <label>
+                <span className="text-sm font-medium text-stone-300">
+                  Due date
+                </span>
+                <input
+                  className={`${fieldClass} mt-2`}
+                  value={form.dueDate}
+                  onChange={(event) =>
+                    setForm((currentForm) => ({
+                      ...currentForm,
+                      dueDate: event.target.value,
+                    }))
+                  }
+                  placeholder="Today"
+                />
+              </label>
+
+              <label className="lg:col-span-4">
+                <span className="text-sm font-medium text-stone-300">
+                  Description
+                </span>
+                <textarea
+                  className={`${fieldClass} mt-2 min-h-28 resize-y`}
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm((currentForm) => ({
+                      ...currentForm,
+                      description: event.target.value,
+                    }))
+                  }
+                  placeholder="What needs to happen?"
+                />
+              </label>
+
+              <div className="lg:col-span-4">
+                <Button
+                  type="submit"
+                  className="h-11 rounded-full bg-amber-100 px-5 text-stone-950 hover:bg-amber-200"
+                >
+                  <Plus />
+                  {activePanel === "edit" ? "Save changes" : "Create task"}
+                </Button>
+              </div>
+            </form>
+          </section>
+        ) : null}
 
         <section className="mt-12 grid gap-6 md:grid-cols-2">
           {tasks.map((task) => (
@@ -364,5 +401,3 @@ export function TaskDashboard() {
     </main>
   )
 }
-
-
