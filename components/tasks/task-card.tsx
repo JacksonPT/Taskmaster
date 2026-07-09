@@ -54,8 +54,8 @@ export function TaskCard({
   return (
     <article
       className={cn(
-        "rounded-3xl border border-white/15 bg-[#12171f] p-5 shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:border-amber-100/25 hover:bg-[#171d26]",
-        isDone && "border-emerald-200/20 bg-emerald-950/10"
+        "rounded-3xl border border-white/15 bg-[#12171f] p-5 shadow-xl shadow-black/20",
+        isDone && "border-white/10 bg-stone-900/60 opacity-70"
       )}
     >
       <div className="flex flex-wrap items-center gap-2">
