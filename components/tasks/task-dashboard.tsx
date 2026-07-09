@@ -73,7 +73,7 @@ const emptyForm: TaskFormState = {
 }
 
 const fieldClass =
-  "w-full rounded-2xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm text-white outline-none transition placeholder:text-stone-500 focus:border-amber-100/50 focus:ring-4 focus:ring-amber-100/10"
+  "w-full rounded-2xl border border-app-border bg-white/[0.06] px-4 py-3 text-sm text-white outline-none transition placeholder:text-stone-500 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
 
 type StatCardProps = {
   icon: LucideIcon
@@ -83,7 +83,7 @@ type StatCardProps = {
 
 function StatCard({ icon: Icon, label, value }: StatCardProps) {
   return (
-    <div className="rounded-3xl border border-white/15 bg-[#151922] p-5 shadow-lg shadow-black/15">
+    <div className="rounded-3xl border border-app-border bg-app-panel p-5 shadow-lg shadow-black/15">
       <Icon className="size-5 text-amber-200" />
       <p className="mt-4 text-4xl font-bold tracking-tight text-white">
         {value}
@@ -219,11 +219,11 @@ export function TaskDashboard() {
   }
 
   return (
-    <main className="min-h-svh bg-[#070b10] bg-[radial-gradient(circle_at_top_left,rgba(251,191,117,0.08),transparent_32%)] px-6 py-8 text-stone-100 sm:px-8 lg:px-12">
+    <main className="min-h-svh bg-app-background bg-[radial-gradient(circle_at_top_left,rgba(251,191,117,0.08),transparent_32%)] px-6 py-8 text-app-foreground sm:px-8 lg:px-12">
       <div className="mx-auto max-w-6xl">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-sm text-stone-400 transition hover:text-amber-100"
+          className="inline-flex items-center gap-2 text-sm text-stone-400 transition hover:text-brand-primary"
         >
           <ArrowLeft className="size-4" />
           Back to landing page
@@ -231,7 +231,7 @@ export function TaskDashboard() {
 
         <section className="mt-10 grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
           <div>
-            <p className="font-heading text-sm font-semibold tracking-[0.42em] text-amber-50/90 uppercase">
+            <p className="font-heading text-sm font-semibold tracking-[0.42em] text-brand-primary/90 uppercase">
               Local state task workspace
             </p>
             <h1 className="mt-4 max-w-3xl font-heading text-5xl font-light tracking-[0.08em] text-white uppercase sm:text-6xl">
@@ -260,7 +260,7 @@ export function TaskDashboard() {
 
         <div className="mt-12 flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="font-heading text-xs font-semibold tracking-[0.3em] text-amber-100/70 uppercase">
+            <p className="font-heading text-xs font-semibold tracking-[0.3em] text-brand-soft uppercase">
               Manage tasks
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-white">
@@ -269,7 +269,7 @@ export function TaskDashboard() {
           </div>
           <Button
             type="button"
-            className="h-11 rounded-full bg-amber-100 px-5 text-stone-950 hover:bg-amber-200"
+            className="h-11 rounded-full bg-brand-primary px-5 text-stone-950 hover:bg-brand-primary-hover"
             onClick={openAddPanel}
           >
             <Plus />
@@ -278,10 +278,10 @@ export function TaskDashboard() {
         </div>
 
         {activePanel ? (
-          <section className="mt-6 rounded-[2rem] border border-white/15 bg-[#10151d] p-5 shadow-xl shadow-black/20">
+          <section className="mt-6 rounded-[2rem] border border-app-border bg-app-surface p-5 shadow-xl shadow-black/20">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-heading text-xs font-semibold tracking-[0.3em] text-amber-100/70 uppercase">
+                <p className="font-heading text-xs font-semibold tracking-[0.3em] text-brand-soft uppercase">
                   {activePanel === "edit" ? "Editing task" : "Create task"}
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold text-white">
@@ -294,7 +294,7 @@ export function TaskDashboard() {
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-full border-white/15 bg-white/5 text-stone-100 hover:bg-white/10"
+                className="rounded-full border-app-border bg-white/5 text-stone-100 hover:bg-white/10"
                 onClick={resetForm}
               >
                 <X />
@@ -311,7 +311,7 @@ export function TaskDashboard() {
                   Title
                 </span>
                 <input
-                  className="mt-2 w-full rounded-2xl border border-white/15 bg-white/[0.06] px-4 py-3 text-sm text-white transition outline-none placeholder:text-stone-500 focus:border-amber-100/50 focus:ring-4 focus:ring-amber-100/10"
+                  className="mt-2 w-full rounded-2xl border border-app-border bg-white/[0.06] px-4 py-3 text-sm text-white transition outline-none placeholder:text-stone-500 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
                   value={form.title}
                   onChange={(event) =>
                     setForm((currentForm) => ({
@@ -380,7 +380,7 @@ export function TaskDashboard() {
               <div className="lg:col-span-4">
                 <Button
                   type="submit"
-                  className="h-11 rounded-full bg-amber-100 px-5 text-stone-950 hover:bg-amber-200"
+                  className="h-11 rounded-full bg-brand-primary px-5 text-stone-950 hover:bg-brand-primary-hover"
                 >
                   <Plus />
                   {activePanel === "edit" ? "Save changes" : "Create task"}

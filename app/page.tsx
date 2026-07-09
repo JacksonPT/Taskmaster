@@ -31,29 +31,29 @@ function TaskmasterMark() {
         d="M100 35C116 62 132 77 164 81C146 104 134 123 136 158C108 145 91 145 64 158C66 123 54 104 36 81C68 77 84 62 100 35Z"
         fill="url(#mark-gradient)"
       />
-      <circle cx="100" cy="66" r="33" fill="#070b10" />
-      <circle cx="65" cy="124" r="34" fill="#070b10" />
-      <circle cx="135" cy="124" r="34" fill="#070b10" />
+      <circle cx="100" cy="66" r="33" fill="var(--app-background)" />
+      <circle cx="65" cy="124" r="34" fill="var(--app-background)" />
+      <circle cx="135" cy="124" r="34" fill="var(--app-background)" />
     </svg>
   )
 }
 
 export default function Page() {
   return (
-    <main className="min-h-svh overflow-hidden bg-[#070b10] text-stone-100">
+    <main className="min-h-svh overflow-hidden bg-app-background text-app-foreground">
       <section className="relative flex min-h-svh items-center justify-center px-6 py-16 sm:px-8">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#403029_0%,transparent_34%),linear-gradient(135deg,rgba(251,191,117,0.16),transparent_28%),linear-gradient(225deg,rgba(255,255,255,0.08),transparent_24%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-[#070b10] to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-app-background to-transparent" />
 
         <div className="relative grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="mx-auto flex max-w-2xl flex-col items-center text-center lg:items-start lg:text-left">
             <TaskmasterMark />
 
-            <p className="mt-8 font-heading text-sm font-semibold tracking-[0.48em] text-amber-100/70 uppercase">
+            <p className="mt-8 font-heading text-sm font-semibold tracking-[0.48em] text-brand-soft uppercase">
               Task planning for focused people
             </p>
 
-            <h1 className="mt-5 font-heading text-5xl font-light tracking-[0.12em] text-amber-50 uppercase sm:text-6xl lg:text-7xl">
+            <h1 className="mt-5 font-heading text-5xl font-light tracking-[0.12em] text-brand-primary uppercase sm:text-6xl lg:text-7xl">
               Task Master:
               <span className="block bg-gradient-to-r from-amber-100 via-orange-200 to-stone-400 bg-clip-text text-transparent">
                 AI Powered Productivity
@@ -69,7 +69,7 @@ export default function Page() {
               <Button
                 type="button"
                 size="lg"
-                className="h-12 rounded-full bg-amber-100 px-6 text-sm font-semibold text-stone-950 hover:bg-amber-200"
+                className="h-12 rounded-full bg-brand-primary px-6 text-sm font-semibold text-stone-950 hover:bg-brand-primary-hover"
               >
                 Log in to view tasks
                 <ArrowRight />
@@ -78,7 +78,7 @@ export default function Page() {
                 type="button"
                 variant="outline"
                 size="lg"
-                className="h-12 rounded-full border-amber-100/20 bg-white/5 px-6 text-sm text-amber-50 hover:bg-white/10"
+                className="h-12 rounded-full border-brand-primary/20 bg-white/5 px-6 text-sm text-brand-primary hover:bg-white/10"
               >
                 See how it works
               </Button>
@@ -92,17 +92,17 @@ export default function Page() {
           </div>
 
           <div className="mx-auto w-full max-w-md rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-black/30 backdrop-blur">
-            <div className="rounded-[1.5rem] border border-white/10 bg-[#0d1218]/90 p-5">
+            <div className="rounded-[1.5rem] border border-white/10 bg-app-surface/90 p-5">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div>
-                  <p className="font-heading text-xs font-semibold tracking-[0.32em] text-amber-100/60 uppercase">
+                  <p className="font-heading text-xs font-semibold tracking-[0.32em] text-brand-primary/60 uppercase">
                     Today&apos;s focus
                   </p>
-                  <h2 className="mt-2 text-xl font-semibold text-amber-50">
+                  <h2 className="mt-2 text-xl font-semibold text-brand-primary">
                     Suggested order
                   </h2>
                 </div>
-                <span className="rounded-full bg-amber-100/10 px-3 py-1 text-xs text-amber-100">
+                <span className="rounded-full bg-brand-primary/10 px-3 py-1 text-xs text-brand-primary">
                   AI draft
                 </span>
               </div>
@@ -139,7 +139,7 @@ export default function Page() {
                           {reason}
                         </p>
                       </div>
-                      <span className="ml-auto rounded-full border border-amber-100/20 px-2 py-1 text-[0.65rem] tracking-[0.18em] text-amber-100/80 uppercase">
+                      <span className="ml-auto rounded-full border border-brand-primary/20 px-2 py-1 text-[0.65rem] tracking-[0.18em] text-brand-primary/80 uppercase">
                         {priority}
                       </span>
                     </div>

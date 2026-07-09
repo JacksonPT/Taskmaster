@@ -54,8 +54,8 @@ export function TaskCard({
   return (
     <article
       className={cn(
-        "rounded-3xl border border-white/15 bg-[#12171f] p-5 shadow-xl shadow-black/20",
-        isDone && "border-white/10 bg-stone-900/60 opacity-70"
+        "rounded-3xl border border-app-border bg-app-card p-5 shadow-xl shadow-black/20",
+        isDone && "border-white/10 bg-app-completed opacity-70"
       )}
     >
       <div className="flex flex-wrap items-center gap-2">
@@ -80,8 +80,8 @@ export function TaskCard({
         {task.description}
       </p>
 
-      <div className="mt-6 rounded-2xl border border-amber-100/20 bg-[#202125] p-4">
-        <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-amber-100 uppercase">
+      <div className="mt-6 rounded-2xl border border-brand-primary/20 bg-app-elevated p-4">
+        <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-brand-primary uppercase">
           <Sparkles className="size-4" />
           AI suggestion
         </p>
@@ -102,7 +102,8 @@ export function TaskCard({
           size="sm"
           className={cn(
             "rounded-full",
-            !isDone && "bg-amber-100 text-stone-950 hover:bg-amber-200"
+            !isDone &&
+              "bg-brand-primary text-stone-950 hover:bg-brand-primary-hover"
           )}
           onClick={() => onToggleComplete(task.id)}
         >
@@ -113,7 +114,7 @@ export function TaskCard({
           type="button"
           variant="outline"
           size="sm"
-          className="rounded-full border-white/15 bg-white/5 text-stone-100 hover:bg-white/10"
+          className="rounded-full border-app-border bg-white/5 text-stone-100 hover:bg-white/10"
           onClick={() => onEdit(task)}
         >
           <Pencil />
