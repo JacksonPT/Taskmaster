@@ -119,4 +119,6 @@ The public landing page now introduces the product with a branded hero, temporar
 
 The temporary task workspace at `/tasks` now uses mock task data to render task cards, priority labels, statuses, AI suggestion copy, and dashboard counters.
 
-Next step: add task create, edit, delete, and complete interactions with local state.
+The `/tasks` workspace now supports temporary browser-only task interactions: create, edit, complete, reopen, and delete.
+
+Next step: add Prisma and PostgreSQL so tasks can be stored permanently.
