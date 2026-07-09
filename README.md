@@ -115,4 +115,6 @@ By building this app, the goal is to understand and be able to discuss:
 
 Initialized with Next.js, TypeScript, Tailwind CSS, shadcn/ui, Base UI, ESLint, Prettier, and Lucide icons.
 
-Next step: build the landing page.
+The public landing page now introduces the product with a branded hero, temporary logo mark, tagline, login call-to-action, and task preview card.
+
+Next step: build the first task UI with temporary data.
