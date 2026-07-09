@@ -1,5 +1,13 @@
-import { CalendarDays, CheckCircle2, Circle, Sparkles } from "lucide-react"
+import {
+  CalendarDays,
+  CheckCircle2,
+  Circle,
+  Pencil,
+  Sparkles,
+  Trash2,
+} from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export type TaskPriority = "High" | "Medium" | "Low"
@@ -29,13 +37,27 @@ const statusIcons: Record<TaskStatus, typeof Circle> = {
 
 type TaskCardProps = {
   task: Task
+  onDelete: (taskId: number) => void
+  onEdit: (task: Task) => void
+  onToggleComplete: (taskId: number) => void
 }
 
-export function TaskCard({ task }: TaskCardProps) {
+export function TaskCard({
+  task,
+  onDelete,
+  onEdit,
+  onToggleComplete,
+}: TaskCardProps) {
   const StatusIcon = statusIcons[task.status]
+  const isDone = task.status === "Done"
 
   return (
-    <article className="rounded-3xl border border-white/15 bg-[#12171f] p-5 shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:border-amber-100/25 hover:bg-[#171d26]">
+    <article
+      className={cn(
+        "rounded-3xl border border-white/15 bg-[#12171f] p-5 shadow-xl shadow-black/20 transition hover:-translate-y-0.5 hover:border-amber-100/25 hover:bg-[#171d26]",
+        isDone && "border-emerald-200/20 bg-emerald-950/10"
+      )}
+    >
       <div className="flex flex-wrap items-center gap-2">
         <span
           className={cn(
@@ -72,6 +94,42 @@ export function TaskCard({ task }: TaskCardProps) {
         <CalendarDays className="size-4" />
         Due {task.dueDate}
       </p>
+
+      <div className="mt-6 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+        <Button
+          type="button"
+          variant={isDone ? "outline" : "default"}
+          size="sm"
+          className={cn(
+            "rounded-full",
+            !isDone && "bg-amber-100 text-stone-950 hover:bg-amber-200"
+          )}
+          onClick={() => onToggleComplete(task.id)}
+        >
+          <CheckCircle2 />
+          {isDone ? "Reopen" : "Complete"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-full border-white/15 bg-white/5 text-stone-100 hover:bg-white/10"
+          onClick={() => onEdit(task)}
+        >
+          <Pencil />
+          Edit
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="rounded-full border-red-200/20 bg-red-500/10 text-red-100 hover:bg-red-500/20"
+          onClick={() => onDelete(task.id)}
+        >
+          <Trash2 />
+          Delete
+        </Button>
+      </div>
     </article>
   )
 }
