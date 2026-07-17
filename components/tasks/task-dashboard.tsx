@@ -7,6 +7,12 @@ import type { LucideIcon } from "lucide-react"
 import Link from "next/link"
 
 import {
+  createTask,
+  deleteTask,
+  toggleTaskComplete,
+  updateTask,
+} from "@/app/tasks/actions"
+import {
   TaskCard,
   type Task,
   type TaskPriority,
@@ -23,56 +29,11 @@ type TaskFormState = {
 // This tracks which form panel should be visible. null means no form is open.
 type ActivePanel = "add" | "edit" | null
 
-// Temporary seed data. Later, this will come from PostgreSQL through Prisma.
-const initialTasks: Task[] = [
-  {
-    id: 1,
-    title: "Set up project README",
-    description: "Document the app idea, stack, MVP scope, and build roadmap.",
-    priority: "High",
-    status: "Done",
-    dueDate: "Today",
-    aiSuggestion:
-      "Keep this short and clear so the project is easy to explain on GitHub and in interviews.",
-  },
-  {
-    id: 2,
-    title: "Design the first task dashboard",
-    description:
-      "Create the layout users will eventually see after logging in.",
-    priority: "High",
-    status: "In Progress",
-    dueDate: "Today",
-    aiSuggestion:
-      "Start with mock data first. This lets you learn UI structure before adding a database.",
-  },
-  {
-    id: 3,
-    title: "Choose database provider",
-    description: "Compare Neon and Supabase for hosted PostgreSQL.",
-    priority: "Medium",
-    status: "Todo",
-    dueDate: "This week",
-    aiSuggestion:
-      "Pick the option with the clearest free tier and easiest connection string setup.",
-  },
-  {
-    id: 4,
-    title: "Write auth notes",
-    description: "List what should be private once users can log in.",
-    priority: "Low",
-    status: "Todo",
-    dueDate: "Later",
-    aiSuggestion:
-      "Focus on task ownership first: each user should only see the tasks they created.",
-  },
-]
-
 const emptyForm: TaskFormState = {
   title: "",
   description: "",
   priority: "Medium",
-  dueDate: "Today",
+  dueDate: "",
 }
 
 // Shared field classes keep inputs/selects visually consistent.
@@ -99,21 +60,13 @@ function StatCard({ icon: Icon, label, value }: StatCardProps) {
   )
 }
 
-// This is not real AI yet. It gives us realistic UI behavior until the AI API is added.
-function buildTemporaryAiSuggestion(task: TaskFormState) {
-  if (task.priority === "High") {
-    return "Start this early and define the first concrete action before doing lower-priority work."
-  }
-
-  if (task.priority === "Medium") {
-    return "Schedule this after your high-priority work so it keeps moving without taking over the day."
-  }
-
-  return "Keep this available as a quick win, but do not let it interrupt higher-impact work."
+type TaskDashboardProps = {
+  initialTasks: Task[]
 }
 
-export function TaskDashboard() {
-  // tasks is the current in-browser task list. It resets on refresh until we add a database.
+export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
+  // The first task list comes from PostgreSQL through the /tasks Server Component.
+  // We keep a local copy so the UI can update immediately after server actions succeed.
   const [tasks, setTasks] = useState(initialTasks)
 
   // form stores the current values typed into the add/edit form fields.
@@ -123,7 +76,11 @@ export function TaskDashboard() {
   const [activePanel, setActivePanel] = useState<ActivePanel>(null)
 
   // editingTaskId tells the submit handler which task should be updated.
-  const [editingTaskId, setEditingTaskId] = useState<number | null>(null)
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null)
+
+  // These small state values help the user understand when a database action is running or failed.
+  const [isSaving, setIsSaving] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   // These stats are derived from state, so they update automatically after every task action.
   const completedCount = tasks.filter((task) => task.status === "Done").length
@@ -142,6 +99,7 @@ export function TaskDashboard() {
   // Resetting means closing any panel and clearing the form back to default values.
   function resetForm() {
     setForm(emptyForm)
+    setFormError(null)
     setActivePanel(null)
     setEditingTaskId(null)
   }
@@ -153,7 +111,7 @@ export function TaskDashboard() {
     setActivePanel("add")
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     // Prevent the browser's default page refresh so React can handle the form in memory.
     event.preventDefault()
 
@@ -161,53 +119,67 @@ export function TaskDashboard() {
     const description = form.description.trim()
 
     if (!title || !description) {
+      setFormError("Title and description are required.")
       return
     }
 
+    setIsSaving(true)
+    setFormError(null)
+
+    //EDIT SUBMIT
     // If the edit panel is active, update the matching task instead of creating a new one.
     if (activePanel === "edit" && editingTaskId) {
-      setTasks((currentTasks) =>
-        currentTasks.map((task) =>
-          task.id === editingTaskId
-            ? {
-                ...task,
-                title,
-                description,
-                priority: form.priority,
-                dueDate: form.dueDate,
-                aiSuggestion: buildTemporaryAiSuggestion(form),
-              }
-            : task
+      try {
+        const updatedTask = await updateTask(editingTaskId, {
+          title,
+          description,
+          priority: form.priority,
+          dueDate: form.dueDate,
+        })
+
+        setTasks((currentTasks) =>
+          currentTasks.map((task) =>
+            task.id === editingTaskId ? updatedTask : task
+          )
         )
-      )
-      resetForm()
+
+        resetForm()
+      } catch (error) {
+        setFormError(
+          error instanceof Error ? error.message : "Could not update task."
+        )
+      } finally {
+        setIsSaving(false)
+      }
       return
     }
 
     // Safety guard: do not create a task unless the add panel submitted the form.
     if (activePanel !== "add") {
+      setIsSaving(false)
       return
     }
 
-    // Generate a temporary numeric id from the largest current id.
-    // A real database will generate ids later.
-    const nextId = Math.max(0, ...tasks.map((task) => task.id)) + 1
-
-    // Add the new task at the top of the list so it appears immediately.
-    setTasks((currentTasks) => [
-      {
-        id: nextId,
+    //CREATE SUBMIT
+    try {
+      const createdTask = await createTask({
         title,
         description,
         priority: form.priority,
-        status: "Todo",
         dueDate: form.dueDate,
-        aiSuggestion: buildTemporaryAiSuggestion(form),
-      },
-      ...currentTasks,
-    ])
+      })
 
-    resetForm()
+      // Add the returned database row at the top of the list so it appears immediately.
+      setTasks((currentTasks) => [createdTask, ...currentTasks])
+
+      resetForm()
+    } catch (error) {
+      setFormError(
+        error instanceof Error ? error.message : "Could not create task."
+      )
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   // Load the selected task into the form, then show the edit panel.
@@ -218,12 +190,14 @@ export function TaskDashboard() {
       title: task.title,
       description: task.description,
       priority: task.priority,
-      dueDate: task.dueDate,
+      dueDate: task.dueDateInput,
     })
   }
 
-  // Delete uses filter to create a new array without the removed task.
-  function handleDelete(taskId: number) {
+  // Delete calls the database first, then removes the task from local UI state.
+  async function handleDelete(taskId: string) {
+    await deleteTask(taskId)
+
     setTasks((currentTasks) =>
       currentTasks.filter((task) => task.id !== taskId)
     )
@@ -233,14 +207,18 @@ export function TaskDashboard() {
     }
   }
 
-  // Toggle complete keeps the task but switches between Done and Todo.
-  function handleToggleComplete(taskId: number) {
+  // Toggle complete keeps the task but switches between Done and Todo in the database.
+  async function handleToggleComplete(taskId: string) {
+    const taskToUpdate = tasks.find((task) => task.id === taskId)
+
+    if (!taskToUpdate) {
+      return
+    }
+
+    const updatedTask = await toggleTaskComplete(taskId, taskToUpdate.status)
+
     setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId
-          ? { ...task, status: task.status === "Done" ? "Todo" : "Done" }
-          : task
-      )
+      currentTasks.map((task) => (task.id === taskId ? updatedTask : task))
     )
   }
 
@@ -262,14 +240,14 @@ export function TaskDashboard() {
         <section className="mt-10 grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
           <div>
             <p className="font-heading text-sm font-semibold tracking-[0.42em] text-brand-primary/90 uppercase">
-              Local state task workspace
+              Database task workspace
             </p>
             <h1 className="mt-4 max-w-3xl font-heading text-5xl font-light tracking-[0.08em] text-white uppercase sm:text-6xl">
               Your task command center
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-9 text-stone-200">
-              Create, edit, complete, and delete tasks in the browser. These
-              changes are temporary until we connect PostgreSQL and Prisma.
+              Create, edit, complete, and delete tasks in PostgreSQL. Refresh
+              the page and your tasks will still be here.
             </p>
           </div>
 
@@ -381,6 +359,7 @@ export function TaskDashboard() {
                   Due date
                 </span>
                 <input
+                  type="date"
                   className={`${fieldClass} mt-2`}
                   value={form.dueDate}
                   onChange={(event) =>
@@ -389,7 +368,6 @@ export function TaskDashboard() {
                       dueDate: event.target.value,
                     }))
                   }
-                  placeholder="Today"
                 />
               </label>
 
@@ -411,12 +389,22 @@ export function TaskDashboard() {
               </label>
 
               <div className="lg:col-span-4">
+                {formError ? (
+                  <p className="mb-3 text-sm font-medium text-red-200">
+                    {formError}
+                  </p>
+                ) : null}
                 <Button
                   type="submit"
+                  disabled={isSaving}
                   className="h-11 rounded-full bg-brand-primary px-5 text-stone-950 hover:bg-brand-primary-hover"
                 >
                   <Plus />
-                  {activePanel === "edit" ? "Save changes" : "Create task"}
+                  {isSaving
+                    ? "Saving..."
+                    : activePanel === "edit"
+                      ? "Save changes"
+                      : "Create task"}
                 </Button>
               </div>
             </form>
@@ -425,15 +413,22 @@ export function TaskDashboard() {
 
         {/* Task grid: renders the sorted task list and wires each card to dashboard actions. */}
         <section className="mt-12 grid gap-6 md:grid-cols-2">
-          {orderedTasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
-              onToggleComplete={handleToggleComplete}
-            />
-          ))}
+          {orderedTasks.length > 0 ? (
+            orderedTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onDelete={handleDelete}
+                onEdit={handleEdit}
+                onToggleComplete={handleToggleComplete}
+              />
+            ))
+          ) : (
+            <div className="rounded-3xl border border-app-border bg-app-card p-6 text-stone-300 md:col-span-2">
+              No tasks yet. Select Add Task to create your first database-backed
+              task.
+            </div>
+          )}
         </section>
       </div>
     </main>
