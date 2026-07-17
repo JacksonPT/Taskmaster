@@ -90,11 +90,41 @@ pnpm lint
 pnpm typecheck
 ```
 
+Generate the Prisma client after changing the database schema:
+
+```bash
+pnpm db:generate
+```
+
+Apply Prisma schema changes to your PostgreSQL database:
+
+```bash
+pnpm db:migrate
+```
+
+Open Prisma Studio to inspect database rows visually:
+
+```bash
+pnpm db:studio
+```
+
 Open the app locally:
 
 ```txt
 http://localhost:3000
 ```
+
+## Database Setup
+
+Taskmaster uses Neon-hosted PostgreSQL with Prisma as the TypeScript database layer.
+
+1. Create a Neon PostgreSQL database.
+2. Copy `.env.example` to `.env`.
+3. Paste your Neon connection string into `DATABASE_URL`.
+4. Run `pnpm db:generate` to generate Prisma Client.
+5. Run `pnpm db:migrate` when you are ready to create the database tables.
+
+The current Prisma schema defines the first `Task` table shape, including priority, status, due date, AI suggestion text, timestamps, and an optional `userId` field for Clerk auth later.
 
 ## Learning Goals
 
@@ -121,4 +151,6 @@ The temporary task workspace at `/tasks` now uses mock task data to render task 
 
 The `/tasks` workspace now supports temporary browser-only task interactions: create, edit, complete, reopen, and delete.
 
-Next step: add Prisma and PostgreSQL so tasks can be stored permanently.
+Prisma and PostgreSQL setup has been added with a first `Task` schema, a Prisma config file, database scripts, and a reusable Prisma Client helper.
+
+Next step: connect the `/tasks` workspace to the database so tasks can be stored permanently.
