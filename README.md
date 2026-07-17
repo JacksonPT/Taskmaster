@@ -153,4 +153,6 @@ The `/tasks` workspace now supports temporary browser-only task interactions: cr
 
 Prisma and PostgreSQL setup has been added with a first `Task` schema, a Prisma config file, database scripts, and a reusable Prisma Client helper.
 
-Next step: connect the `/tasks` workspace to the database so tasks can be stored permanently.
+The `/tasks` workspace now reads from PostgreSQL and uses server actions to create, edit, delete, complete, and reopen persisted tasks.
+
+Next step: add authentication with Clerk so each user can access a private task list.
