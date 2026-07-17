@@ -2,8 +2,8 @@ import { ArrowRight, CheckCircle2, LockKeyhole } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
-// This temporary SVG gives the app a logo-like mark before a final image asset exists.
-// Because it is inline SVG, we can style it with CSS variables from globals.css.
+// Inline SVG keeps the brand mark crisp without introducing a separate asset.
+// Because it is inline, we can style it with CSS variables from globals.css.
 function TaskmasterMark() {
   return (
     <svg
@@ -19,9 +19,14 @@ function TaskmasterMark() {
           <stop offset="0.42" stopColor="#f4b38e" />
           <stop offset="1" stopColor="#8f5d4b" />
         </linearGradient>
+        <mask id="mark-cutouts">
+          <rect width="200" height="200" fill="white" />
+          <ellipse cx="100" cy="45" rx="42" ry="43" fill="black" />
+          <ellipse cx="62" cy="128" rx="36" ry="47" fill="black" />
+          <ellipse cx="138" cy="128" rx="36" ry="47" fill="black" />
+        </mask>
       </defs>
 
-      {/* Temporary inline mark: this gives us a branded logo spot before adding a final asset. */}
       <circle
         cx="100"
         cy="100"
@@ -29,13 +34,13 @@ function TaskmasterMark() {
         stroke="url(#mark-gradient)"
         strokeWidth="12"
       />
-      <path
-        d="M100 35C116 62 132 77 164 81C146 104 134 123 136 158C108 145 91 145 64 158C66 123 54 104 36 81C68 77 84 62 100 35Z"
+      <circle
+        cx="100"
+        cy="100"
+        r="70"
         fill="url(#mark-gradient)"
+        mask="url(#mark-cutouts)"
       />
-      <circle cx="100" cy="66" r="33" fill="var(--app-background)" />
-      <circle cx="65" cy="124" r="34" fill="var(--app-background)" />
-      <circle cx="135" cy="124" r="34" fill="var(--app-background)" />
     </svg>
   )
 }
