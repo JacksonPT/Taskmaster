@@ -16,12 +16,13 @@ export type TaskStatus = "Todo" | "In Progress" | "Done"
 
 // Task describes the shape of one task throughout the UI.
 export type Task = {
-  id: number
+  id: string
   title: string
   description: string
   priority: TaskPriority
   status: TaskStatus
   dueDate: string
+  dueDateInput: string
   aiSuggestion: string
 }
 
@@ -43,9 +44,9 @@ const statusIcons: Record<TaskStatus, typeof Circle> = {
 type TaskCardProps = {
   task: Task
   // The card displays buttons, but the dashboard owns the actual state changes.
-  onDelete: (taskId: number) => void
+  onDelete: (taskId: string) => void
   onEdit: (task: Task) => void
-  onToggleComplete: (taskId: number) => void
+  onToggleComplete: (taskId: string) => void
 }
 
 export function TaskCard({
