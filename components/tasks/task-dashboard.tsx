@@ -322,7 +322,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                   Title
                 </span>
                 <input
-                  className="mt-2 w-full rounded-2xl border border-app-border bg-white/[0.06] px-4 py-3 text-sm text-white transition outline-none placeholder:text-stone-500 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
+                  className="mt-2 w-full rounded-2xl border border-app-border bg-white/6 px-4 py-3 text-sm text-white transition outline-none placeholder:text-stone-500 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
                   value={form.title}
                   onChange={(event) =>
                     setForm((currentForm) => ({
