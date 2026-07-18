@@ -38,3 +38,6 @@ next-env.d.ts
 
 # Prisma generates this client from prisma/schema.prisma, so it should be rebuilt instead of committed.
 /lib/generated/prisma
+
+# clerk configuration (can include secrets)
+/.clerk/
