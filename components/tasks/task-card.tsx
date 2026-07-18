@@ -23,6 +23,7 @@ export type Task = {
   status: TaskStatus
   dueDate: string
   dueDateInput: string
+  priorityReason: string
   aiSuggestion: string
 }
 
@@ -87,6 +88,18 @@ export function TaskCard({
       <p className="mt-3 text-base leading-7 text-stone-300">
         {task.description}
       </p>
+
+      {task.priorityReason ? (
+        <div className="mt-6 rounded-2xl border border-violet-200/20 bg-violet-300/[0.06] p-4">
+          <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-violet-100 uppercase">
+            <Sparkles className="size-4" />
+            AI priority rationale
+          </p>
+          <p className="mt-3 text-sm leading-6 text-stone-200">
+            {task.priorityReason}
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-6 rounded-2xl border border-brand-primary/20 bg-app-elevated p-4">
         <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-brand-primary uppercase">
