@@ -5,6 +5,7 @@ import { type FormEvent, useState } from "react"
 import { ArrowLeft, ListChecks, Plus, Timer, Trophy, X } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import Link from "next/link"
+import { UserButton } from "@clerk/nextjs"
 
 import {
   createTask,
@@ -227,14 +228,17 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
   return (
     <main className="min-h-svh bg-app-background bg-[radial-gradient(circle_at_top_left,rgba(251,191,117,0.08),transparent_32%)] px-6 py-8 text-app-foreground sm:px-8 lg:px-12">
       <div className="mx-auto max-w-6xl">
-        {/* Back navigation: lets the user return to the marketing/landing page. */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-stone-400 transition hover:text-brand-primary"
-        >
-          <ArrowLeft className="size-4" />
-          Back to landing page
-        </Link>
+        {/* Navigation includes the Clerk user menu so users can manage or end their session. */}
+        <div className="flex items-center justify-between gap-4">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-stone-400 transition hover:text-brand-primary"
+          >
+            <ArrowLeft className="size-4" />
+            Back to landing page
+          </Link>
+          <UserButton />
+        </div>
 
         {/* Header area: explains the dashboard and shows live stats from task state. */}
         <section className="mt-10 grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
