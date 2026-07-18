@@ -4,6 +4,7 @@
 // Client components can call these exported async functions, but the code in
 // this file always runs on the server where it can safely use Prisma.
 
+import { auth } from "@clerk/nextjs/server"
 import { revalidatePath } from "next/cache"
 
 // prisma is our reusable Prisma Client. It knows how to connect to Neon/Postgres.
@@ -32,8 +33,18 @@ type TaskFormInput = {
 // knows the database-backed /tasks page should be refreshed.
 const TASKS_PATH = "/tasks"
 
-// Module 7 will add Clerk auth. When that happens, every server action below
-// must check the signed-in user and filter/mutate only that user's tasks.
+// Require authentication inside every database action instead of trusting that
+// the caller visited a protected page first. Module 8 will also use the returned
+// userId to limit every query and mutation to tasks owned by that user.
+async function requireSignedInUser() {
+  const { userId } = await auth()
+
+  if (!userId) {
+    throw new Error("You must be signed in to manage tasks.")
+  }
+
+  return userId
+}
 
 // These maps translate between UI-friendly labels and database enum values.
 // The database stores stable uppercase values because enums should be predictable.
@@ -152,6 +163,8 @@ function normalizeTaskInput(input: TaskFormInput) {
 // Read all tasks from PostgreSQL for the /tasks page.
 // This is called by app/tasks/page.tsx before rendering TaskDashboard.
 export async function getTasks() {
+  await requireSignedInUser()
+
   const tasks = await prisma.task.findMany({
     orderBy: {
       createdAt: "desc",
@@ -164,6 +177,8 @@ export async function getTasks() {
 // Create one database row from the add-task form.
 // Returns the newly created task in UI format so the dashboard can update immediately.
 export async function createTask(input: TaskFormInput) {
+  await requireSignedInUser()
+
   const task = await prisma.task.create({
     data: normalizeTaskInput(input),
   })
@@ -177,6 +192,8 @@ export async function createTask(input: TaskFormInput) {
 // Update one existing task by id.
 // The id comes from the task card the user chose to edit.
 export async function updateTask(taskId: string, input: TaskFormInput) {
+  await requireSignedInUser()
+
   const task = await prisma.task.update({
     where: {
       id: taskId,
@@ -192,6 +209,8 @@ export async function updateTask(taskId: string, input: TaskFormInput) {
 // Delete one existing task by id.
 // This does not return a task because the row no longer exists after deletion.
 export async function deleteTask(taskId: string) {
+  await requireSignedInUser()
+
   await prisma.task.delete({
     where: {
       id: taskId,
@@ -207,6 +226,8 @@ export async function toggleTaskComplete(
   taskId: string,
   currentStatus: TaskStatus
 ) {
+  await requireSignedInUser()
+
   // If it is already done, reopen it as Todo. Otherwise, mark it Done.
   const nextStatus =
     currentStatus === "Done" ? statusToDb.Todo : statusToDb.Done
