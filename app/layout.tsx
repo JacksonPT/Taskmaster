@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono, Rajdhani } from "next/font/google"
+import { ClerkProvider } from "@clerk/nextjs"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -45,8 +46,13 @@ export default function RootLayout({
       )}
     >
       <body>
-        {/* ThemeProvider enables light/dark theme handling for shadcn components. */}
-        <ThemeProvider>{children}</ThemeProvider>
+        {/*
+          ClerkProvider shares authentication/session data with the full app.
+          ThemeProvider remains inside it so both providers wrap every route.
+        */}
+        <ClerkProvider>
+          <ThemeProvider>{children}</ThemeProvider>
+        </ClerkProvider>
       </body>
     </html>
   )
