@@ -45,6 +45,10 @@ model Task {
   // AI suggestions will be generated later. For now this can stay empty.
   aiSuggestion String?
 
+  // Structured AI priority output is stored separately from the later
+  // completion-suggestion feature so each concept has one database field.
+  priorityReason String?
+
   // Clerk is the identity provider, so its user id becomes our ownership key.
   // This stays nullable only so pre-auth development rows are not destroyed.
   // Application queries never return null-owned rows, and all new tasks set userId.
