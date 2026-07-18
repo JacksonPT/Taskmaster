@@ -45,10 +45,15 @@ model Task {
   // AI suggestions will be generated later. For now this can stay empty.
   aiSuggestion String?
 
-  // userId will store the Clerk user id later. It stays optional until auth is added.
+  // Clerk is the identity provider, so its user id becomes our ownership key.
+  // This stays nullable only so pre-auth development rows are not destroyed.
+  // Application queries never return null-owned rows, and all new tasks set userId.
   userId String?
 
   // Timestamps are useful for sorting, auditing, and dashboard stats later.
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // PostgreSQL can use this index to locate one user's rows efficiently.
+  @@index([userId])
 }
