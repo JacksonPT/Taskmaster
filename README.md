@@ -126,6 +126,17 @@ Taskmaster uses Neon-hosted PostgreSQL with Prisma as the TypeScript database la
 
 The current Prisma schema defines the first `Task` table shape, including priority, status, due date, AI suggestion text, timestamps, and an optional `userId` field for Clerk auth later.
 
+## Authentication Setup
+
+Taskmaster uses Clerk for sign-in, sign-up, session handling, and protected server resources.
+
+1. Create a Clerk application.
+2. Copy the publishable and secret keys from the Clerk Dashboard API Keys page.
+3. Add both values to your local `.env` using the names shown in `.env.example`.
+4. Run `pnpm dev` and create the first test account from the landing page.
+
+The `/tasks` page and every task Server Action require a signed-in user. Task ownership filtering is intentionally deferred to the next module, so authenticated users currently access the same task rows.
+
 ## Learning Goals
 
 By building this app, the goal is to understand and be able to discuss:
@@ -155,4 +166,6 @@ Prisma and PostgreSQL setup has been added with a first `Task` schema, a Prisma 
 
 The `/tasks` workspace now reads from PostgreSQL and uses server actions to create, edit, delete, complete, and reopen persisted tasks.
 
-Next step: add authentication with Clerk so each user can access a private task list.
+Clerk authentication now provides sign-in/sign-up controls, session-aware landing content, a user menu, and authentication checks around the task page and task Server Actions.
+
+Next step: associate tasks with Clerk user ids so each user can access only their own private task list.
