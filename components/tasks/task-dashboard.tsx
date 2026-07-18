@@ -2,7 +2,15 @@
 
 // This component needs useState and event handlers, so it must be a Client Component.
 import { type FormEvent, useState } from "react"
-import { ArrowLeft, ListChecks, Plus, Timer, Trophy, X } from "lucide-react"
+import {
+  ArrowLeft,
+  ListChecks,
+  Plus,
+  Sparkles,
+  Timer,
+  Trophy,
+  X,
+} from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import Link from "next/link"
 import { UserButton } from "@clerk/nextjs"
@@ -13,6 +21,7 @@ import {
   toggleTaskComplete,
   updateTask,
 } from "@/app/tasks/actions"
+import { suggestTaskPriority } from "@/app/tasks/ai-actions"
 import {
   TaskCard,
   type Task,
@@ -24,6 +33,7 @@ type TaskFormState = {
   title: string
   description: string
   priority: TaskPriority
+  priorityReason: string
   dueDate: string
 }
 
@@ -34,12 +44,21 @@ const emptyForm: TaskFormState = {
   title: "",
   description: "",
   priority: "Medium",
+  priorityReason: "",
   dueDate: "",
 }
 
 // Shared field classes keep inputs/selects visually consistent.
 const fieldClass =
   "w-full rounded-2xl border border-app-border bg-white/[0.06] px-4 py-3 text-sm text-white outline-none transition placeholder:text-stone-500 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
+
+// Sorting uses normal deterministic code after AI has classified each task.
+// Lower numbers appear first; no additional model request is needed to order rows.
+const priorityRank: Record<TaskPriority, number> = {
+  High: 0,
+  Medium: 1,
+  Low: 2,
+}
 
 type StatCardProps = {
   icon: LucideIcon
@@ -83,6 +102,11 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
 
+  // AI requests have independent loading/error state because suggesting and
+  // saving are separate server operations.
+  const [isSuggesting, setIsSuggesting] = useState(false)
+  const [suggestionError, setSuggestionError] = useState<string | null>(null)
+
   // These stats are derived from state, so they update automatically after every task action.
   const completedCount = tasks.filter((task) => task.status === "Done").length
   const activeCount = tasks.length - completedCount
@@ -91,16 +115,27 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
   ).length
 
   // Copy before sorting because Array.sort() mutates the array it runs on.
-  // Done tasks convert to 1, active tasks convert to 0, so active tasks sort first.
-  const orderedTasks = [...tasks].sort(
-    (taskA, taskB) =>
+  // Active tasks sort by accepted priority; completed tasks remain at the bottom.
+  const orderedTasks = [...tasks].sort((taskA, taskB) => {
+    const completionDifference =
       Number(taskA.status === "Done") - Number(taskB.status === "Done")
-  )
+
+    if (completionDifference !== 0) {
+      return completionDifference
+    }
+
+    if (taskA.status === "Done" && taskB.status === "Done") {
+      return 0
+    }
+
+    return priorityRank[taskA.priority] - priorityRank[taskB.priority]
+  })
 
   // Resetting means closing any panel and clearing the form back to default values.
   function resetForm() {
     setForm(emptyForm)
     setFormError(null)
+    setSuggestionError(null)
     setActivePanel(null)
     setEditingTaskId(null)
   }
@@ -108,6 +143,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
   // Opening add clears any existing edit state so add/edit panels stay mutually exclusive.
   function openAddPanel() {
     setForm(emptyForm)
+    setSuggestionError(null)
     setEditingTaskId(null)
     setActivePanel("add")
   }
@@ -135,6 +171,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
           title,
           description,
           priority: form.priority,
+          priorityReason: form.priorityReason,
           dueDate: form.dueDate,
         })
 
@@ -167,6 +204,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
         title,
         description,
         priority: form.priority,
+        priorityReason: form.priorityReason,
         dueDate: form.dueDate,
       })
 
@@ -191,8 +229,44 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
       title: task.title,
       description: task.description,
       priority: task.priority,
+      priorityReason: task.priorityReason,
       dueDate: task.dueDateInput,
     })
+  }
+
+  // React sends only bounded form data to an authenticated Server Action.
+  // The returned object has already passed Gemini structured output and Zod validation.
+  async function handleSuggestPriority() {
+    if (!form.title.trim() || !form.description.trim()) {
+      setSuggestionError("Enter a title and description first.")
+      return
+    }
+
+    setIsSuggesting(true)
+    setSuggestionError(null)
+
+    try {
+      const result = await suggestTaskPriority({
+        title: form.title,
+        description: form.description,
+        dueDate: form.dueDate,
+      })
+
+      if (!result.success) {
+        setSuggestionError(result.message)
+        return
+      }
+
+      setForm((currentForm) => ({
+        ...currentForm,
+        priority: result.suggestion.priority,
+        priorityReason: result.suggestion.explanation,
+      }))
+    } catch {
+      setSuggestionError("Could not request a suggestion. Try again shortly.")
+    } finally {
+      setIsSuggesting(false)
+    }
   }
 
   // Delete calls the database first, then removes the task from local UI state.
@@ -323,12 +397,15 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                 <input
                   className="mt-2 w-full rounded-2xl border border-app-border bg-white/6 px-4 py-3 text-sm text-white transition outline-none placeholder:text-stone-500 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
                   value={form.title}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setForm((currentForm) => ({
                       ...currentForm,
                       title: event.target.value,
+                      // Input changes invalidate the explanation generated from old data.
+                      priorityReason: "",
                     }))
-                  }
+                    setSuggestionError(null)
+                  }}
                   placeholder="Example: Finish project proposal"
                 />
               </label>
@@ -340,12 +417,15 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                 <select
                   className={`${fieldClass} mt-2`}
                   value={form.priority}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setForm((currentForm) => ({
                       ...currentForm,
                       priority: event.target.value as TaskPriority,
+                      // Manual override keeps the human in control and clears stale AI rationale.
+                      priorityReason: "",
                     }))
-                  }
+                    setSuggestionError(null)
+                  }}
                 >
                   <option value="High">High</option>
                   <option value="Medium">Medium</option>
@@ -361,12 +441,14 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                   type="date"
                   className={`${fieldClass} mt-2`}
                   value={form.dueDate}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setForm((currentForm) => ({
                       ...currentForm,
                       dueDate: event.target.value,
+                      priorityReason: "",
                     }))
-                  }
+                    setSuggestionError(null)
+                  }}
                 />
               </label>
 
@@ -377,15 +459,60 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                 <textarea
                   className={`${fieldClass} mt-2 min-h-28 resize-y`}
                   value={form.description}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setForm((currentForm) => ({
                       ...currentForm,
                       description: event.target.value,
+                      priorityReason: "",
                     }))
-                  }
+                    setSuggestionError(null)
+                  }}
                   placeholder="What needs to happen?"
                 />
               </label>
+
+              <div className="rounded-2xl border border-violet-200/20 bg-violet-300/[0.06] p-4 lg:col-span-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-violet-100 uppercase">
+                      <Sparkles className="size-4" />
+                      Gemini priority suggestion
+                    </p>
+                    <p className="mt-2 text-sm text-stone-400">
+                      Gemini returns a validated priority and rationale. You can
+                      override it before saving.
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isSuggesting || isSaving}
+                    className="rounded-full border-violet-200/25 bg-violet-200/10 text-violet-50 hover:bg-violet-200/20"
+                    onClick={handleSuggestPriority}
+                  >
+                    <Sparkles />
+                    {isSuggesting ? "Thinking..." : "Suggest priority"}
+                  </Button>
+                </div>
+
+                {form.priorityReason ? (
+                  <p className="mt-4 text-sm leading-6 text-stone-200">
+                    <span className="font-semibold text-violet-100">
+                      Suggested {form.priority}:
+                    </span>{" "}
+                    {form.priorityReason}
+                  </p>
+                ) : null}
+
+                {suggestionError ? (
+                  <p
+                    className="mt-4 text-sm font-medium text-red-200"
+                    role="alert"
+                  >
+                    {suggestionError}
+                  </p>
+                ) : null}
+              </div>
 
               <div className="lg:col-span-4">
                 {formError ? (
