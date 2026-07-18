@@ -208,15 +208,10 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     }
   }
 
-  // Toggle complete keeps the task but switches between Done and Todo in the database.
+  // Send only the task id. The Server Action reads the trusted current status
+  // from PostgreSQL and returns the updated row.
   async function handleToggleComplete(taskId: string) {
-    const taskToUpdate = tasks.find((task) => task.id === taskId)
-
-    if (!taskToUpdate) {
-      return
-    }
-
-    const updatedTask = await toggleTaskComplete(taskId, taskToUpdate.status)
+    const updatedTask = await toggleTaskComplete(taskId)
 
     setTasks((currentTasks) =>
       currentTasks.map((task) => (task.id === taskId ? updatedTask : task))
