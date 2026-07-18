@@ -34,7 +34,7 @@ The app will eventually support:
 | Database | PostgreSQL | Persistent relational data storage |
 | ORM | Prisma | Type-safe database queries and migrations |
 | Auth | Clerk | User accounts and protected routes |
-| AI | Vercel AI SDK and OpenAI | AI-powered task prioritization and suggestions |
+| AI | Vercel AI SDK, Google Gemini, and Zod | Structured, validated task recommendations |
 | Deployment | Vercel | Hosting for the Next.js app |
 | Database Hosting | Neon or Supabase | Hosted PostgreSQL database |
 
@@ -137,6 +137,17 @@ Taskmaster uses Clerk for sign-in, sign-up, session handling, and protected serv
 
 The `/tasks` page and every task Server Action require a signed-in user.
 
+## AI Setup
+
+Taskmaster uses the Vercel AI SDK with Google's Gemini provider. AI calls run only on the server, and Zod validates each structured model response before the browser receives it.
+
+1. Create a Google AI Studio API key at `https://aistudio.google.com/app/apikey`.
+2. Add it to your local `.env` as `GOOGLE_GENERATIVE_AI_API_KEY`.
+3. Restart `pnpm dev` after changing environment variables.
+4. Open an add or edit form, enter a title and description, and select **Suggest priority**.
+
+The key is intentionally not prefixed with `NEXT_PUBLIC_`, so Next.js does not include it in browser JavaScript. Gemini classifies one task at a time; ordinary TypeScript then sorts active tasks High, Medium, and Low without spending more AI quota.
+
 ## Authorization Architecture
 
 Clerk handles identity and supplies the authenticated `userId`. Server Actions use that trusted id in every Prisma `where` clause, while PostgreSQL returns only matching rows. The browser never chooses or submits task ownership.
@@ -181,4 +192,6 @@ Clerk authentication now provides sign-in/sign-up controls, session-aware landin
 
 All task reads and mutations are now scoped to the authenticated Clerk user, creating private per-user task lists in a shared PostgreSQL database.
 
-Next step: add AI-generated priority suggestions with structured server-side output.
+Gemini now recommends a priority for one task at a time through an authenticated Server Action. The AI SDK requests structured output, Zod validates its priority and rationale, and accepted results persist in PostgreSQL while remaining manually overridable.
+
+Next step: add AI-generated task completion suggestions.
