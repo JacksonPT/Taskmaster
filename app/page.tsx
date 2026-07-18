@@ -53,7 +53,7 @@ export default function Page() {
       <section className="relative flex min-h-svh items-center justify-center px-6 py-16 sm:px-8">
         {/* Decorative background layers. They sit behind the content because the content wrapper is relative. */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,#403029_0%,transparent_34%),linear-gradient(135deg,rgba(251,191,117,0.16),transparent_28%),linear-gradient(225deg,rgba(255,255,255,0.08),transparent_24%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-app-background to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-48 bg-linear-to-t from-app-background to-transparent" />
 
         {/* The landing hero uses one column on mobile and two columns on large screens. */}
         <div className="relative grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
@@ -66,7 +66,7 @@ export default function Page() {
 
             <h1 className="mt-5 font-heading text-5xl font-light tracking-[0.12em] text-brand-primary uppercase sm:text-6xl lg:text-7xl">
               Task Master:
-              <span className="block bg-gradient-to-r from-amber-100 via-orange-200 to-stone-400 bg-clip-text text-transparent">
+              <span className="block bg-linear-to-r from-amber-100 via-orange-200 to-stone-400 bg-clip-text text-transparent">
                 AI Powered Productivity
               </span>
             </h1>
@@ -123,7 +123,7 @@ export default function Page() {
           </div>
 
           {/* Static preview card: it communicates the future product before real task data exists. */}
-          <div className="mx-auto w-full max-w-md rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-black/30 backdrop-blur">
+          <div className="mx-auto w-full max-w-md rounded-[2rem] border border-white/10 bg-white/6 p-5 shadow-2xl shadow-black/30 backdrop-blur">
             <div className="rounded-[1.5rem] border border-white/10 bg-app-surface/90 p-5">
               <div className="flex items-center justify-between border-b border-white/10 pb-4">
                 <div>
@@ -160,7 +160,7 @@ export default function Page() {
                 ].map(([priority, title, reason]) => (
                   <div
                     key={title}
-                    className="rounded-2xl border border-white/10 bg-white/[0.04] p-4"
+                    className="rounded-2xl border border-white/10 bg-white/4 p-4"
                   >
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="mt-0.5 size-5 text-amber-200" />

@@ -471,7 +471,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                 />
               </label>
 
-              <div className="rounded-2xl border border-violet-200/20 bg-violet-300/[0.06] p-4 lg:col-span-4">
+              <div className="rounded-2xl border border-violet-200/20 bg-violet-300/6 p-4 lg:col-span-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-violet-100 uppercase">

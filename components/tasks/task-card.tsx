@@ -90,7 +90,7 @@ export function TaskCard({
       </p>
 
       {task.priorityReason ? (
-        <div className="mt-6 rounded-2xl border border-violet-200/20 bg-violet-300/[0.06] p-4">
+        <div className="mt-6 rounded-2xl border border-violet-200/20 bg-violet-300/6 p-4">
           <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-violet-100 uppercase">
             <Sparkles className="size-4" />
             AI priority rationale
