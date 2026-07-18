@@ -22,6 +22,7 @@ type TaskFormInput = {
   title: string
   description: string
   priority: TaskPriority
+  priorityReason: string
   dueDate: string
 }
 
@@ -123,6 +124,7 @@ function mapTaskFromDatabase(task: TaskModel): Task {
     status: statusFromDb[task.status],
     dueDate: formatDueDateForDisplay(task.dueDate),
     dueDateInput: formatDueDateForInput(task.dueDate),
+    priorityReason: task.priorityReason ?? "",
     aiSuggestion:
       task.aiSuggestion ?? "No AI suggestion has been generated yet.",
   }
@@ -133,9 +135,14 @@ function mapTaskFromDatabase(task: TaskModel): Task {
 function normalizeTaskInput(input: TaskFormInput) {
   const title = input.title.trim()
   const description = input.description.trim()
+  const priorityReason = input.priorityReason.trim()
 
   if (!title || !description) {
     throw new Error("Task title and description are required.")
+  }
+
+  if (priorityReason.length > 240) {
+    throw new Error("Priority explanations must be 240 characters or less.")
   }
 
   return {
@@ -143,6 +150,7 @@ function normalizeTaskInput(input: TaskFormInput) {
     description,
     // Convert the UI label into the enum value Postgres stores.
     priority: priorityToDb[input.priority],
+    priorityReason: priorityReason || null,
     dueDate: parseDueDate(input.dueDate),
     aiSuggestion: buildTemporaryAiSuggestion(input),
   }
