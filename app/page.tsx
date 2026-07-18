@@ -1,4 +1,6 @@
 import { ArrowRight, CheckCircle2, LockKeyhole } from "lucide-react"
+import Link from "next/link"
+import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
 
 import { Button } from "@/components/ui/button"
 
@@ -74,30 +76,49 @@ export default function Page() {
               momentum with AI-guided suggestions that keep your day moving.
             </p>
 
-            <div className="mt-9 flex w-full max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row">
-              {/* This is a UI placeholder until Clerk authentication is added. */}
-              <Button
-                type="button"
-                size="lg"
-                className="h-12 rounded-full bg-brand-primary px-6 text-sm font-semibold text-stone-950 hover:bg-brand-primary-hover"
-              >
-                Log in to view tasks
-                <ArrowRight />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="h-12 rounded-full border-brand-primary/20 bg-white/5 px-6 text-sm text-brand-primary hover:bg-white/10"
-              >
-                See how it works
-              </Button>
-            </div>
+            {/* Clerk renders different controls based on the current session. */}
+            <Show when="signed-out">
+              <div className="mt-9 flex w-full max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row">
+                {/* mode="modal" keeps users on the landing page during sign-in. */}
+                <SignInButton mode="modal">
+                  <Button
+                    type="button"
+                    size="lg"
+                    className="h-12 rounded-full bg-brand-primary px-6 text-sm font-semibold text-stone-950 hover:bg-brand-primary-hover"
+                  >
+                    Log in to view tasks
+                    <ArrowRight />
+                  </Button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="lg"
+                    className="h-12 rounded-full border-brand-primary/20 bg-white/5 px-6 text-sm text-brand-primary hover:bg-white/10"
+                  >
+                    Create account
+                  </Button>
+                </SignUpButton>
+              </div>
+            </Show>
+
+            <Show when="signed-in">
+              <div className="mt-9 flex items-center gap-4">
+                <Link
+                  href="/tasks"
+                  className="inline-flex h-12 items-center gap-2 rounded-full bg-brand-primary px-6 text-sm font-semibold text-stone-950 transition hover:bg-brand-primary-hover"
+                >
+                  Open task workspace
+                  <ArrowRight className="size-4" />
+                </Link>
+                <UserButton />
+              </div>
+            </Show>
 
             <p className="mt-4 flex items-center gap-2 text-sm text-stone-400">
               <LockKeyhole className="size-4" />
-              Tasks stay private behind your account once authentication is
-              added.
+              Sign in is required before the task workspace can be opened.
             </p>
           </div>
 
