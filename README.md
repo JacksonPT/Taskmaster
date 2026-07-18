@@ -124,7 +124,7 @@ Taskmaster uses Neon-hosted PostgreSQL with Prisma as the TypeScript database la
 4. Run `pnpm db:generate` to generate Prisma Client.
 5. Run `pnpm db:migrate` when you are ready to create the database tables.
 
-The current Prisma schema defines the first `Task` table shape, including priority, status, due date, AI suggestion text, timestamps, and an optional `userId` field for Clerk auth later.
+The Prisma `Task` model stores Clerk's `userId` as the ownership key. PostgreSQL indexes that field so user-scoped queries remain efficient as the table grows. The field remains nullable only for pre-auth development rows; new application writes always include an owner.
 
 ## Authentication Setup
 
@@ -135,7 +135,18 @@ Taskmaster uses Clerk for sign-in, sign-up, session handling, and protected serv
 3. Add both values to your local `.env` using the names shown in `.env.example`.
 4. Run `pnpm dev` and create the first test account from the landing page.
 
-The `/tasks` page and every task Server Action require a signed-in user. Task ownership filtering is intentionally deferred to the next module, so authenticated users currently access the same task rows.
+The `/tasks` page and every task Server Action require a signed-in user.
+
+## Authorization Architecture
+
+Clerk handles identity and supplies the authenticated `userId`. Server Actions use that trusted id in every Prisma `where` clause, while PostgreSQL returns only matching rows. The browser never chooses or submits task ownership.
+
+This separates the security responsibilities:
+
+- Clerk authentication establishes who made the request.
+- Next.js Server Actions enforce authorization near database access.
+- Prisma expresses ownership filters in type-safe queries.
+- PostgreSQL stores and indexes the ownership key.
 
 ## Learning Goals
 
@@ -168,4 +179,6 @@ The `/tasks` workspace now reads from PostgreSQL and uses server actions to crea
 
 Clerk authentication now provides sign-in/sign-up controls, session-aware landing content, a user menu, and authentication checks around the task page and task Server Actions.
 
-Next step: associate tasks with Clerk user ids so each user can access only their own private task list.
+All task reads and mutations are now scoped to the authenticated Clerk user, creating private per-user task lists in a shared PostgreSQL database.
+
+Next step: add AI-generated priority suggestions with structured server-side output.
