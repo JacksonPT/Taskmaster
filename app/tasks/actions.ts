@@ -65,20 +65,6 @@ const statusFromDb = {
   DONE: "Done",
 } as const
 
-// Temporary stand-in for real AI. Keeping this on the server means the future
-// OpenAI call can replace this function without changing the component much.
-function buildTemporaryAiSuggestion(task: TaskFormInput) {
-  if (task.priority === "High") {
-    return "Start this early and define the first concrete action before doing lower-priority work."
-  }
-
-  if (task.priority === "Medium") {
-    return "Schedule this after your high-priority work so it keeps moving without taking over the day."
-  }
-
-  return "Keep this available as a quick win, but do not let it interrupt higher-impact work."
-}
-
 // The form gives us a string, but the database stores dueDate as DateTime.
 // Empty string becomes null because due dates are optional in schema.prisma.
 function parseDueDate(value: string) {
@@ -125,8 +111,8 @@ function mapTaskFromDatabase(task: TaskModel): Task {
     dueDate: formatDueDateForDisplay(task.dueDate),
     dueDateInput: formatDueDateForInput(task.dueDate),
     priorityReason: task.priorityReason ?? "",
-    aiSuggestion:
-      task.aiSuggestion ?? "No AI suggestion has been generated yet.",
+    aiSuggestion: task.aiSuggestion ?? "",
+    aiSteps: task.aiSteps,
   }
 }
 
@@ -141,6 +127,10 @@ function normalizeTaskInput(input: TaskFormInput) {
     throw new Error("Task title and description are required.")
   }
 
+  if (title.length > 120 || description.length > 1000) {
+    throw new Error("Task details are too long.")
+  }
+
   if (priorityReason.length > 240) {
     throw new Error("Priority explanations must be 240 characters or less.")
   }
@@ -152,7 +142,6 @@ function normalizeTaskInput(input: TaskFormInput) {
     priority: priorityToDb[input.priority],
     priorityReason: priorityReason || null,
     dueDate: parseDueDate(input.dueDate),
-    aiSuggestion: buildTemporaryAiSuggestion(input),
   }
 }
 
@@ -203,7 +192,13 @@ export async function updateTask(taskId: string, input: TaskFormInput) {
       // Combining id and userId prevents one user from updating another user's row.
       userId,
     },
-    data: normalizeTaskInput(input),
+    data: {
+      ...normalizeTaskInput(input),
+      // A plan generated from previous task details is no longer trustworthy
+      // after an edit. The user can request a fresh plan from the updated card.
+      aiSuggestion: null,
+      aiSteps: [],
+    },
   })
 
   revalidatePath(TASKS_PATH)
