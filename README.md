@@ -145,8 +145,11 @@ Taskmaster uses the Vercel AI SDK with Google's Gemini provider. AI calls run on
 2. Add it to your local `.env` as `GOOGLE_GENERATIVE_AI_API_KEY`.
 3. Restart `pnpm dev` after changing environment variables.
 4. Open an add or edit form, enter a title and description, and select **Suggest priority**.
+5. Save a task and select **Generate action plan** on its card for completion guidance.
 
-The key is intentionally not prefixed with `NEXT_PUBLIC_`, so Next.js does not include it in browser JavaScript. Gemini classifies one task at a time; ordinary TypeScript then sorts active tasks High, Medium, and Low without spending more AI quota.
+The key is intentionally not prefixed with `NEXT_PUBLIC_`, so Next.js does not include it in browser JavaScript. Gemini classifies one task at a time; ordinary TypeScript then sorts active tasks High, Medium, and Low without spending more AI quota. Generating or regenerating a completion plan makes one additional Gemini request.
+
+Completion-plan buttons send only a task id. The Server Action authenticates the Clerk session, loads the owned task from PostgreSQL, and gives Gemini that trusted task data. Zod requires one summary and two to five ordered steps before Prisma stores the summary as text and the steps as a PostgreSQL text array. Editing a task clears its previous plan because guidance generated from old details may no longer be accurate.
 
 ## Authorization Architecture
 
@@ -194,4 +197,6 @@ All task reads and mutations are now scoped to the authenticated Clerk user, cre
 
 Gemini now recommends a priority for one task at a time through an authenticated Server Action. The AI SDK requests structured output, Zod validates its priority and rationale, and accepted results persist in PostgreSQL while remaining manually overridable.
 
-Next step: add AI-generated task completion suggestions.
+Saved task cards can now generate or regenerate a Gemini completion plan. Each validated plan contains a summary and two to five ordered steps, persists in PostgreSQL, and remains available after a refresh.
+
+Next step: compare active tasks in an AI-assisted daily planning flow.
