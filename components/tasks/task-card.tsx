@@ -2,6 +2,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Circle,
+  LoaderCircle,
   Pencil,
   Sparkles,
   Trash2,
@@ -25,6 +26,7 @@ export type Task = {
   dueDateInput: string
   priorityReason: string
   aiSuggestion: string
+  aiSteps: string[]
 }
 
 // Record<TaskPriority, string> means every priority must have a style.
@@ -47,17 +49,28 @@ type TaskCardProps = {
   // The card displays buttons, but the dashboard owns the actual state changes.
   onDelete: (taskId: string) => void
   onEdit: (task: Task) => void
+  onGeneratePlan: (taskId: string) => void
   onToggleComplete: (taskId: string) => void
+  isGeneratingPlan: boolean
+  isPlanActionDisabled: boolean
+  planError: string | null
 }
 
 export function TaskCard({
   task,
   onDelete,
   onEdit,
+  onGeneratePlan,
   onToggleComplete,
+  isGeneratingPlan,
+  isPlanActionDisabled,
+  planError,
 }: TaskCardProps) {
   const StatusIcon = statusIcons[task.status]
   const isDone = task.status === "Done"
+  const hasCompletionPlan = Boolean(
+    task.aiSuggestion && task.aiSteps.length > 0
+  )
 
   return (
     <article
@@ -101,20 +114,37 @@ export function TaskCard({
         </div>
       ) : null}
 
-      <div className="mt-6 rounded-2xl border border-brand-primary/20 bg-app-elevated p-4">
-        <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-brand-primary uppercase">
-          <Sparkles className="size-4" />
-          AI suggestion
-        </p>
-        <p className="mt-3 text-base leading-7 text-stone-200">
-          {task.aiSuggestion}
-        </p>
-      </div>
+      {/* Keep the card compact until the user has generated a real plan. */}
+      {hasCompletionPlan ? (
+        <div
+          className="mt-6 rounded-2xl border border-brand-primary/20 bg-app-elevated p-4"
+          aria-live="polite"
+        >
+          <p className="flex items-center gap-2 text-xs font-bold tracking-[0.18em] text-brand-primary uppercase">
+            <Sparkles className="size-4" />
+            AI completion plan
+          </p>
+          <p className="mt-3 text-base leading-7 text-stone-200">
+            {task.aiSuggestion}
+          </p>
+          <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-stone-300 marker:font-semibold marker:text-brand-primary">
+            {task.aiSteps.map((step, index) => (
+              <li key={`${task.id}-step-${index}`}>{step}</li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
 
       <p className="mt-6 flex items-center gap-2 text-sm font-medium text-stone-300">
         <CalendarDays className="size-4" />
         Due {task.dueDate}
       </p>
+
+      {planError ? (
+        <p className="mt-4 text-sm font-medium text-red-200" role="alert">
+          {planError}
+        </p>
+      ) : null}
 
       <div className="mt-6 flex flex-wrap gap-2 border-t border-white/10 pt-4">
         <Button
@@ -126,6 +156,7 @@ export function TaskCard({
             !isDone &&
               "bg-brand-primary text-stone-950 hover:bg-brand-primary-hover"
           )}
+          disabled={isGeneratingPlan}
           onClick={() => onToggleComplete(task.id)}
         >
           <CheckCircle2 />
@@ -135,6 +166,7 @@ export function TaskCard({
           type="button"
           variant="outline"
           size="sm"
+          disabled={isGeneratingPlan}
           className="rounded-full border-app-border bg-white/5 text-stone-100 hover:bg-white/10"
           onClick={() => onEdit(task)}
         >
@@ -145,12 +177,34 @@ export function TaskCard({
           type="button"
           variant="outline"
           size="sm"
+          disabled={isGeneratingPlan}
           className="rounded-full border-red-200/20 bg-red-500/10 text-red-100 hover:bg-red-500/20"
           onClick={() => onDelete(task.id)}
         >
           <Trash2 />
           Delete
         </Button>
+        {!isDone ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={isPlanActionDisabled}
+            className="rounded-full border-brand-primary/25 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20"
+            onClick={() => onGeneratePlan(task.id)}
+          >
+            {isGeneratingPlan ? (
+              <LoaderCircle className="animate-spin" />
+            ) : (
+              <Sparkles />
+            )}
+            {isGeneratingPlan
+              ? "Building plan..."
+              : hasCompletionPlan
+                ? "Regenerate plan"
+                : "Generate action plan"}
+          </Button>
+        ) : null}
       </div>
     </article>
   )
