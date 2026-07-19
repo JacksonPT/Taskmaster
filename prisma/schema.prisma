@@ -42,8 +42,10 @@ model Task {
   // dueDate is optional because users may create tasks without a deadline.
   dueDate DateTime?
 
-  // AI suggestions will be generated later. For now this can stay empty.
+  // Completion guidance has one short summary plus an ordered PostgreSQL text array.
+  // The empty-list default means tasks can exist before a user requests AI help.
   aiSuggestion String?
+  aiSteps      String[] @default([])
 
   // Structured AI priority output is stored separately from the later
   // completion-suggestion feature so each concept has one database field.
