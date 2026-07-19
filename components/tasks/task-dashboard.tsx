@@ -21,7 +21,10 @@ import {
   toggleTaskComplete,
   updateTask,
 } from "@/app/tasks/actions"
-import { suggestTaskPriority } from "@/app/tasks/ai-actions"
+import {
+  createTaskCompletionPlan,
+  suggestTaskPriority,
+} from "@/app/tasks/ai-actions"
 import {
   TaskCard,
   type Task,
@@ -106,6 +109,14 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
   // saving are separate server operations.
   const [isSuggesting, setIsSuggesting] = useState(false)
   const [suggestionError, setSuggestionError] = useState<string | null>(null)
+
+  // Completion plans belong to saved task cards, so their async state identifies
+  // which card is running and which card should display a returned error.
+  const [generatingTaskId, setGeneratingTaskId] = useState<string | null>(null)
+  const [planError, setPlanError] = useState<{
+    taskId: string
+    message: string
+  } | null>(null)
 
   // These stats are derived from state, so they update automatically after every task action.
   const completedCount = tasks.filter((task) => task.status === "Done").length
@@ -223,6 +234,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
 
   // Load the selected task into the form, then show the edit panel.
   function handleEdit(task: Task) {
+    setPlanError(null)
     setActivePanel("edit")
     setEditingTaskId(task.id)
     setForm({
@@ -269,6 +281,41 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     }
   }
 
+  // The browser submits only the id. The Server Action reloads the owned task
+  // from PostgreSQL, calls Gemini once, persists the plan, and returns its fields.
+  async function handleGeneratePlan(taskId: string) {
+    setGeneratingTaskId(taskId)
+    setPlanError(null)
+
+    try {
+      const result = await createTaskCompletionPlan(taskId)
+
+      if (!result.success) {
+        setPlanError({ taskId, message: result.message })
+        return
+      }
+
+      setTasks((currentTasks) =>
+        currentTasks.map((task) =>
+          task.id === taskId
+            ? {
+                ...task,
+                aiSuggestion: result.plan.summary,
+                aiSteps: result.plan.steps,
+              }
+            : task
+        )
+      )
+    } catch {
+      setPlanError({
+        taskId,
+        message: "Could not request a completion plan. Try again shortly.",
+      })
+    } finally {
+      setGeneratingTaskId(null)
+    }
+  }
+
   // Delete calls the database first, then removes the task from local UI state.
   async function handleDelete(taskId: string) {
     await deleteTask(taskId)
@@ -279,6 +326,10 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
 
     if (editingTaskId === taskId) {
       resetForm()
+    }
+
+    if (planError?.taskId === taskId) {
+      setPlanError(null)
     }
   }
 
@@ -397,6 +448,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                 <input
                   className="mt-2 w-full rounded-2xl border border-app-border bg-white/6 px-4 py-3 text-sm text-white transition outline-none placeholder:text-stone-500 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
                   value={form.title}
+                  maxLength={120}
                   onChange={(event) => {
                     setForm((currentForm) => ({
                       ...currentForm,
@@ -459,6 +511,7 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                 <textarea
                   className={`${fieldClass} mt-2 min-h-28 resize-y`}
                   value={form.description}
+                  maxLength={1000}
                   onChange={(event) => {
                     setForm((currentForm) => ({
                       ...currentForm,
@@ -546,7 +599,13 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                 task={task}
                 onDelete={handleDelete}
                 onEdit={handleEdit}
+                onGeneratePlan={handleGeneratePlan}
                 onToggleComplete={handleToggleComplete}
+                isGeneratingPlan={generatingTaskId === task.id}
+                isPlanActionDisabled={generatingTaskId !== null}
+                planError={
+                  planError?.taskId === task.id ? planError.message : null
+                }
               />
             ))
           ) : (
