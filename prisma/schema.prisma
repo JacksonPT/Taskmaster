@@ -60,6 +60,67 @@ model Task {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // A task can appear in the user's current daily plan with an order and reason.
+  dailyPlanItems DailyPlanItem[]
+
   // PostgreSQL can use this index to locate one user's rows efficiently.
   @@index([userId])
+}
+
+// Each Clerk user has at most one current plan. Regeneration replaces its items
+// instead of creating plan history, which keeps the first daily-planning version focused.
+model DailyPlan {
+  id      String @id @default(cuid())
+  userId  String @unique
+  summary String
+
+  // planDate is a trusted UTC YYYY-MM-DD key created by the server.
+  planDate    String
+  generatedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items DailyPlanItem[]
+}
+
+// This association model links a plan to a task while storing AI-specific
+// metadata that does not belong directly on either parent record.
+model DailyPlanItem {
+  id          String @id @default(cuid())
+  dailyPlanId String
+  taskId      String
+  position    Int
+  reason      String
+
+  dailyPlan DailyPlan @relation(fields: [dailyPlanId], references: [id], onDelete: Cascade)
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  // One task and one numeric position may each appear only once per plan.
+  @@unique([dailyPlanId, taskId])
+  @@unique([dailyPlanId, position])
+  @@index([taskId])
+}
+
+// Usage survives plan replacement or deletion, preventing those operations from
+// resetting the limit of two Gemini daily-plan calls per UTC calendar day.
+model DailyPlanUsage {
+  id              String   @id @default(cuid())
+  userId          String
+  usageDate       String
+  generationCount Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, usageDate])
+  @@index([userId])
+}
+
+// A unique reservation identifies the exact in-flight request holding a quota
+// slot. Abandoned rows expire, while one request can never release another's slot.
+model DailyPlanReservation {
+  id        String   @id @default(cuid())
+  userId    String
+  usageDate String
+  createdAt DateTime @default(now())
+
+  @@index([userId, usageDate])
 }
