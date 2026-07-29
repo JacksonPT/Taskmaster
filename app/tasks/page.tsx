@@ -1,7 +1,7 @@
 import { auth } from "@clerk/nextjs/server"
 
 import { TaskDashboard } from "@/components/tasks/task-dashboard"
-import { getTasks } from "./actions"
+import { getDailyPlanState, getTasks } from "./actions"
 
 // This file creates the /tasks route. The interactive logic lives in TaskDashboard.
 // Database-backed pages should render at request time so they show current rows.
@@ -16,7 +16,16 @@ export default async function TasksPage() {
     return redirectToSignIn({ returnBackUrl: "/tasks" })
   }
 
-  const tasks = await getTasks()
+  // These independent reads can run together, reducing the route's total wait.
+  const [tasks, dailyPlanState] = await Promise.all([
+    getTasks(),
+    getDailyPlanState(),
+  ])
 
-  return <TaskDashboard initialTasks={tasks} />
+  return (
+    <TaskDashboard
+      initialTasks={tasks}
+      initialDailyPlanState={dailyPlanState}
+    />
+  )
 }
