@@ -54,6 +54,7 @@ type TaskCardProps = {
   isGeneratingPlan: boolean
   isPlanActionDisabled: boolean
   planError: string | null
+  focusPosition?: number
 }
 
 export function TaskCard({
@@ -65,6 +66,7 @@ export function TaskCard({
   isGeneratingPlan,
   isPlanActionDisabled,
   planError,
+  focusPosition,
 }: TaskCardProps) {
   const StatusIcon = statusIcons[task.status]
   const isDone = task.status === "Done"
@@ -93,6 +95,11 @@ export function TaskCard({
           <StatusIcon className="size-3.5" />
           {task.status}
         </span>
+        {focusPosition ? (
+          <span className="rounded-full border border-sky-300/25 bg-sky-300/10 px-3 py-1 text-xs font-semibold text-sky-100">
+            Focus #{focusPosition}
+          </span>
+        ) : null}
       </div>
 
       <h2 className="mt-5 text-2xl font-semibold tracking-tight text-white">
