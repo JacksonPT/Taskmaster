@@ -1,10 +1,11 @@
 "use client"
 
-// This component needs useState and event handlers, so it must be a Client Component.
-import { type FormEvent, useState } from "react"
+// This component needs state, effects, and event handlers, so it must be a Client Component.
+import { type FormEvent, useEffect, useState } from "react"
 import {
   ArrowLeft,
   ListChecks,
+  LoaderCircle,
   Plus,
   Sparkles,
   Timer,
@@ -22,15 +23,24 @@ import {
   updateTask,
 } from "@/app/tasks/actions"
 import {
+  createDailyPlan,
   createTaskCompletionPlan,
+  reorderDailyPlan,
   suggestTaskPriority,
 } from "@/app/tasks/ai-actions"
+import { DailyPlanPanel } from "@/components/tasks/daily-plan-panel"
 import {
   TaskCard,
   type Task,
   type TaskPriority,
 } from "@/components/tasks/task-card"
 import { Button } from "@/components/ui/button"
+import {
+  getUtcDateKey,
+  MAX_DAILY_PLAN_GENERATIONS,
+  type DailyPlanState,
+  type DailyPlanView,
+} from "@/lib/daily-plan"
 
 type TaskFormState = {
   title: string
@@ -85,9 +95,13 @@ function StatCard({ icon: Icon, label, value }: StatCardProps) {
 
 type TaskDashboardProps = {
   initialTasks: Task[]
+  initialDailyPlanState: DailyPlanState
 }
 
-export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
+export function TaskDashboard({
+  initialTasks,
+  initialDailyPlanState,
+}: TaskDashboardProps) {
   // The first task list comes from PostgreSQL through the /tasks Server Component.
   // We keep a local copy so the UI can update immediately after server actions succeed.
   const [tasks, setTasks] = useState(initialTasks)
@@ -118,15 +132,64 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     message: string
   } | null>(null)
 
+  // The daily plan is a persisted snapshot. Its generation counter is separate
+  // so manual reordering never consumes or resets AI allowance.
+  const [dailyPlan, setDailyPlan] = useState<DailyPlanView | null>(
+    initialDailyPlanState.plan
+  )
+  const [generationsUsedToday, setGenerationsUsedToday] = useState(
+    initialDailyPlanState.generationsUsedToday
+  )
+  const [dailyUsageDate, setDailyUsageDate] = useState(
+    initialDailyPlanState.usageDate
+  )
+  const [isPlanningDay, setIsPlanningDay] = useState(false)
+  const [isReorderingDailyPlan, setIsReorderingDailyPlan] = useState(false)
+  const [dailyPlanError, setDailyPlanError] = useState<string | null>(null)
+
+  // Keep a long-open tab usable when the server-enforced UTC allowance resets.
+  // The server still performs the authoritative check on every generation.
+  useEffect(() => {
+    const now = new Date()
+    const nextUtcMidnight = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1
+    )
+    const timeoutId = window.setTimeout(
+      () => {
+        setDailyUsageDate(getUtcDateKey())
+        setGenerationsUsedToday(0)
+        setDailyPlanError(null)
+      },
+      nextUtcMidnight - now.getTime() + 1000
+    )
+
+    return () => window.clearTimeout(timeoutId)
+  }, [dailyUsageDate])
+
   // These stats are derived from state, so they update automatically after every task action.
   const completedCount = tasks.filter((task) => task.status === "Done").length
   const activeCount = tasks.length - completedCount
   const highPriorityCount = tasks.filter(
     (task) => task.priority === "High"
   ).length
+  const currentUsageDate = getUtcDateKey()
+  // Comparing date keys during every render also covers hydration or an
+  // in-flight response that crosses UTC midnight before the timer runs.
+  const effectiveGenerationsUsed =
+    dailyUsageDate === currentUsageDate ? generationsUsedToday : 0
+  const remainingDailyGenerations = Math.max(
+    0,
+    MAX_DAILY_PLAN_GENERATIONS - effectiveGenerationsUsed
+  )
+  const dailyPlanPositions = new Map(
+    dailyPlan?.items.map((item, index) => [item.taskId, index + 1]) ?? []
+  )
 
   // Copy before sorting because Array.sort() mutates the array it runs on.
-  // Active tasks sort by accepted priority; completed tasks remain at the bottom.
+  // A saved focus position takes precedence for active tasks. Unplanned active
+  // tasks fall back to the Module 9 priority order; completed tasks remain last.
   const orderedTasks = [...tasks].sort((taskA, taskB) => {
     const completionDifference =
       Number(taskA.status === "Done") - Number(taskB.status === "Done")
@@ -137,6 +200,15 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
 
     if (taskA.status === "Done" && taskB.status === "Done") {
       return 0
+    }
+
+    const dailyPositionA =
+      dailyPlanPositions.get(taskA.id) ?? Number.MAX_SAFE_INTEGER
+    const dailyPositionB =
+      dailyPlanPositions.get(taskB.id) ?? Number.MAX_SAFE_INTEGER
+
+    if (dailyPositionA !== dailyPositionB) {
+      return dailyPositionA - dailyPositionB
     }
 
     return priorityRank[taskA.priority] - priorityRank[taskB.priority]
@@ -316,6 +388,91 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     }
   }
 
+  // One click sends no task data. The Server Action loads every active owned
+  // task, reserves one of today's two calls, and returns the persisted plan.
+  async function handleCreateDailyPlan() {
+    setIsPlanningDay(true)
+    setDailyPlanError(null)
+
+    try {
+      const result = await createDailyPlan()
+
+      if (!result.success) {
+        setDailyPlanError(result.message)
+
+        if (result.usageDate !== undefined) {
+          setDailyUsageDate(result.usageDate)
+        }
+
+        if (result.generationsUsedToday !== undefined) {
+          setGenerationsUsedToday(result.generationsUsedToday)
+        }
+        return
+      }
+
+      setDailyPlan(result.plan)
+      setDailyUsageDate(result.usageDate)
+      setGenerationsUsedToday(result.generationsUsedToday)
+    } catch {
+      setDailyPlanError("Could not request a daily plan. Try again shortly.")
+    } finally {
+      setIsPlanningDay(false)
+    }
+  }
+
+  // Move one item by swapping ids, then let the server rebuild positions from
+  // trusted stored reasons. This path does not call Gemini.
+  async function handleMoveDailyTask(taskId: string, direction: "up" | "down") {
+    if (!dailyPlan) {
+      return
+    }
+
+    const currentIndex = dailyPlan.items.findIndex(
+      (item) => item.taskId === taskId
+    )
+    const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1
+
+    if (
+      currentIndex === -1 ||
+      nextIndex < 0 ||
+      nextIndex >= dailyPlan.items.length
+    ) {
+      return
+    }
+
+    const reorderedItems = [...dailyPlan.items]
+    const movedItem = reorderedItems[currentIndex]
+    reorderedItems[currentIndex] = reorderedItems[nextIndex]
+    reorderedItems[nextIndex] = movedItem
+
+    setIsReorderingDailyPlan(true)
+    setDailyPlanError(null)
+
+    try {
+      const result = await reorderDailyPlan(
+        reorderedItems.map((item) => item.taskId)
+      )
+
+      if (!result.success) {
+        setDailyPlanError(result.message)
+        return
+      }
+
+      setDailyPlan((currentPlan) =>
+        currentPlan
+          ? {
+              ...currentPlan,
+              items: result.items,
+            }
+          : null
+      )
+    } catch {
+      setDailyPlanError("Could not save the new task order. Try again.")
+    } finally {
+      setIsReorderingDailyPlan(false)
+    }
+  }
+
   // Delete calls the database first, then removes the task from local UI state.
   async function handleDelete(taskId: string) {
     await deleteTask(taskId)
@@ -323,6 +480,19 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
     setTasks((currentTasks) =>
       currentTasks.filter((task) => task.id !== taskId)
     )
+    setDailyPlan((currentPlan) => {
+      if (!currentPlan) {
+        return null
+      }
+
+      const remainingItems = currentPlan.items.filter(
+        (item) => item.taskId !== taskId
+      )
+
+      return remainingItems.length > 0
+        ? { ...currentPlan, items: remainingItems }
+        : null
+    })
 
     if (editingTaskId === taskId) {
       resetForm()
@@ -400,15 +570,54 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
               To create new tasks select Add Task
             </h2>
           </div>
-          <Button
-            type="button"
-            className="h-11 rounded-full bg-brand-primary px-5 text-stone-950 hover:bg-brand-primary-hover"
-            onClick={openAddPanel}
-          >
-            <Plus />
-            Add Task
-          </Button>
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={
+                  isPlanningDay ||
+                  generatingTaskId !== null ||
+                  activeCount === 0 ||
+                  remainingDailyGenerations === 0
+                }
+                className="h-11 rounded-full border-sky-200/25 bg-sky-300/10 px-5 text-sky-50 hover:bg-sky-300/20"
+                onClick={handleCreateDailyPlan}
+              >
+                {isPlanningDay ? (
+                  <LoaderCircle className="animate-spin" />
+                ) : (
+                  <Sparkles />
+                )}
+                {isPlanningDay
+                  ? "Planning..."
+                  : remainingDailyGenerations === 0
+                    ? "Daily limit reached"
+                    : dailyPlan?.planDate === currentUsageDate
+                      ? "Regenerate daily plan"
+                      : "Plan my day"}
+              </Button>
+              <Button
+                type="button"
+                className="h-11 rounded-full bg-brand-primary px-5 text-stone-950 hover:bg-brand-primary-hover"
+                onClick={openAddPanel}
+              >
+                <Plus />
+                Add Task
+              </Button>
+            </div>
+            <p className="text-xs text-stone-500">
+              {remainingDailyGenerations} of {MAX_DAILY_PLAN_GENERATIONS} daily
+              plan generations remaining until 00:00 UTC
+            </p>
+          </div>
         </div>
+
+        {dailyPlanError ? (
+          <p className="mt-4 text-sm font-medium text-red-200" role="alert">
+            {dailyPlanError}
+          </p>
+        ) : null}
 
         {/* Add/edit panel: appears only when the user is creating or editing a task. */}
         {activePanel ? (
@@ -590,6 +799,15 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
           </section>
         ) : null}
 
+        {dailyPlan ? (
+          <DailyPlanPanel
+            plan={dailyPlan}
+            tasks={tasks}
+            isReordering={isReorderingDailyPlan}
+            onMove={handleMoveDailyTask}
+          />
+        ) : null}
+
         {/* Task grid: renders the sorted task list and wires each card to dashboard actions. */}
         <section className="mt-12 grid gap-6 md:grid-cols-2">
           {orderedTasks.length > 0 ? (
@@ -602,10 +820,13 @@ export function TaskDashboard({ initialTasks }: TaskDashboardProps) {
                 onGeneratePlan={handleGeneratePlan}
                 onToggleComplete={handleToggleComplete}
                 isGeneratingPlan={generatingTaskId === task.id}
-                isPlanActionDisabled={generatingTaskId !== null}
+                isPlanActionDisabled={
+                  generatingTaskId !== null || isPlanningDay
+                }
                 planError={
                   planError?.taskId === task.id ? planError.message : null
                 }
+                focusPosition={dailyPlanPositions.get(task.id)}
               />
             ))
           ) : (
