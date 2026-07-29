@@ -146,10 +146,15 @@ Taskmaster uses the Vercel AI SDK with Google's Gemini provider. AI calls run on
 3. Restart `pnpm dev` after changing environment variables.
 4. Open an add or edit form, enter a title and description, and select **Suggest priority**.
 5. Save a task and select **Generate action plan** on its card for completion guidance.
+6. Select **Plan my day** to compare all active tasks in one Gemini request.
 
 The key is intentionally not prefixed with `NEXT_PUBLIC_`, so Next.js does not include it in browser JavaScript. Gemini classifies one task at a time; ordinary TypeScript then sorts active tasks High, Medium, and Low without spending more AI quota. Generating or regenerating a completion plan makes one additional Gemini request.
 
 Completion-plan buttons send only a task id. The Server Action authenticates the Clerk session, loads the owned task from PostgreSQL, and gives Gemini that trusted task data. Zod requires one summary and two to five ordered steps before Prisma stores the summary as text and the steps as a PostgreSQL text array. Editing a task clears its previous plan because guidance generated from old details may no longer be accurate.
+
+Daily planning is limited to two successful generations per user per UTC calendar day: the initial plan and one regeneration. PostgreSQL creates a unique short-lived reservation before the provider call and removes it when generation or persistence fails; abandoned reservations expire after five minutes. The usage row is separate from the current plan, so replacing, deleting, refreshing, or manually reordering a plan cannot reset the allowance.
+
+Gemini must return every active task id exactly once. Application validation rejects missing, duplicate, or invented ids before Prisma transactionally replaces the current plan. Move Up and Move Down controls persist a human-selected order without calling Gemini. A plan remains a snapshot when tasks later change; newly created tasks use normal priority sorting until the next allowed regeneration.
 
 ## Authorization Architecture
 
@@ -199,4 +204,6 @@ Gemini now recommends a priority for one task at a time through an authenticated
 
 Saved task cards can now generate or regenerate a Gemini completion plan. Each validated plan contains a summary and two to five ordered steps, persists in PostgreSQL, and remains available after a refresh.
 
-Next step: compare active tasks in an AI-assisted daily planning flow.
+The dashboard can now compare up to 25 active tasks in one AI-assisted daily planning request, persist one current focus sheet, sort task cards by focus position, and save manual up/down changes without spending AI quota. Server-side UTC usage tracking permits only an initial plan and one regeneration each day.
+
+Next step: add contextual encouragement when users complete tasks.
