@@ -70,7 +70,7 @@ export function DailyPlanPanel({
               key={item.taskId}
               className={cn(
                 "grid gap-4 p-5 sm:grid-cols-[auto_1fr_auto] sm:items-center sm:p-6",
-                isDone && "bg-white/[0.025] opacity-65"
+                isDone && "bg-white/2.5 opacity-65"
               )}
             >
               <span className="flex size-10 items-center justify-center rounded-full border border-brand-primary/25 bg-brand-primary/10 font-heading text-sm font-bold text-brand-primary">
