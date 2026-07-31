@@ -65,9 +65,12 @@ This project is being built in modules so each step has a clear learning goal.
 9. AI priority suggestions
 10. AI task completion suggestions
 11. Daily planning flow
+    - 11.1 Collapsible daily-plan sidebar
 12. Completion encouragement messages
-13. Dashboard and progress stats
-14. Polish, documentation, and deployment
+13. Task notes and resources
+14. Dashboard and progress stats
+15. Testing, accessibility, and security hardening
+16. Deployment and portfolio readiness
 
 ## Getting Started
 
@@ -156,6 +159,8 @@ Daily planning is limited to two successful generations per user per UTC calenda
 
 Gemini must return every active task id exactly once. Application validation rejects missing, duplicate, or invented ids before Prisma transactionally replaces the current plan. Move Up and Move Down controls persist a human-selected order without calling Gemini. A plan remains a snapshot when tasks later change; newly created tasks use normal priority sorting until the next allowed regeneration.
 
+The generated plan appears in a left-side sidebar on wide screens and stacks before task cards on smaller screens. It starts expanded, can collapse into a narrow rail, keeps the main Gemini summary, and uses compact reorderable task rows without repeating each stored item rationale.
+
 ## Authorization Architecture
 
 Clerk handles identity and supplies the authenticated `userId`. Server Actions use that trusted id in every Prisma `where` clause, while PostgreSQL returns only matching rows. The browser never chooses or submits task ownership.
@@ -205,5 +210,7 @@ Gemini now recommends a priority for one task at a time through an authenticated
 Saved task cards can now generate or regenerate a Gemini completion plan. Each validated plan contains a summary and two to five ordered steps, persists in PostgreSQL, and remains available after a refresh.
 
 The dashboard can now compare up to 25 active tasks in one AI-assisted daily planning request, persist one current focus sheet, sort task cards by focus position, and save manual up/down changes without spending AI quota. Server-side UTC usage tracking permits only an initial plan and one regeneration each day.
+
+The daily focus sheet now uses an expanded-by-default responsive sidebar. Users can collapse it without changing saved plan data, while focus badges, card ordering, completion state, and manual movement continue to use the existing persisted plan.
 
 Next step: add contextual encouragement when users complete tasks.
