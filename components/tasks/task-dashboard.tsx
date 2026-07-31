@@ -41,6 +41,7 @@ import {
   type DailyPlanState,
   type DailyPlanView,
 } from "@/lib/daily-plan"
+import { cn } from "@/lib/utils"
 
 type TaskFormState = {
   title: string
@@ -137,6 +138,9 @@ export function TaskDashboard({
   const [dailyPlan, setDailyPlan] = useState<DailyPlanView | null>(
     initialDailyPlanState.plan
   )
+  // The dashboard owns collapse state because it changes both the panel and the
+  // width allocated to the surrounding task/sidebar layout.
+  const [isDailyPlanCollapsed, setIsDailyPlanCollapsed] = useState(false)
   const [generationsUsedToday, setGenerationsUsedToday] = useState(
     initialDailyPlanState.generationsUsedToday
   )
@@ -799,43 +803,61 @@ export function TaskDashboard({
           </section>
         ) : null}
 
-        {dailyPlan ? (
-          <DailyPlanPanel
-            plan={dailyPlan}
-            tasks={tasks}
-            isReordering={isReorderingDailyPlan}
-            onMove={handleMoveDailyTask}
-          />
-        ) : null}
-
-        {/* Task grid: renders the sorted task list and wires each card to dashboard actions. */}
-        <section className="mt-12 grid gap-6 md:grid-cols-2">
-          {orderedTasks.length > 0 ? (
-            orderedTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onDelete={handleDelete}
-                onEdit={handleEdit}
-                onGeneratePlan={handleGeneratePlan}
-                onToggleComplete={handleToggleComplete}
-                isGeneratingPlan={generatingTaskId === task.id}
-                isPlanActionDisabled={
-                  generatingTaskId !== null || isPlanningDay
-                }
-                planError={
-                  planError?.taskId === task.id ? planError.message : null
-                }
-                focusPosition={dailyPlanPositions.get(task.id)}
-              />
-            ))
-          ) : (
-            <div className="rounded-3xl border border-app-border bg-app-card p-6 text-stone-300 md:col-span-2">
-              No tasks yet. Select Add Task to create your first database-backed
-              task.
-            </div>
+        {/* The plan comes first in source and grid order so visual, keyboard,
+            and reading order agree. The parent owns its changing column width. */}
+        <div
+          className={cn(
+            "mt-12 grid gap-6 transition-[grid-template-columns] duration-300",
+            dailyPlan &&
+              (isDailyPlanCollapsed
+                ? "xl:grid-cols-[5rem_minmax(0,1fr)]"
+                : "xl:grid-cols-[22rem_minmax(0,1fr)]")
           )}
-        </section>
+        >
+          {dailyPlan ? (
+            <aside className="min-w-0 xl:sticky xl:top-8 xl:max-h-[calc(100svh-4rem)] xl:self-start xl:overflow-y-auto">
+              <DailyPlanPanel
+                plan={dailyPlan}
+                tasks={tasks}
+                isCollapsed={isDailyPlanCollapsed}
+                isReordering={isReorderingDailyPlan}
+                onToggleCollapsed={() =>
+                  setIsDailyPlanCollapsed((isCollapsed) => !isCollapsed)
+                }
+                onMove={handleMoveDailyTask}
+              />
+            </aside>
+          ) : null}
+
+          {/* Task grid: renders the sorted task list and wires each card to dashboard actions. */}
+          <section className="grid min-w-0 gap-6 md:grid-cols-2">
+            {orderedTasks.length > 0 ? (
+              orderedTasks.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onDelete={handleDelete}
+                  onEdit={handleEdit}
+                  onGeneratePlan={handleGeneratePlan}
+                  onToggleComplete={handleToggleComplete}
+                  isGeneratingPlan={generatingTaskId === task.id}
+                  isPlanActionDisabled={
+                    generatingTaskId !== null || isPlanningDay
+                  }
+                  planError={
+                    planError?.taskId === task.id ? planError.message : null
+                  }
+                  focusPosition={dailyPlanPositions.get(task.id)}
+                />
+              ))
+            ) : (
+              <div className="rounded-3xl border border-app-border bg-app-card p-6 text-stone-300 md:col-span-2">
+                No tasks yet. Select Add Task to create your first
+                database-backed task.
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </main>
   )
