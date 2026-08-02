@@ -18,6 +18,7 @@ import {
   reorderDailyPlan,
   suggestTaskPriority,
 } from "@/app/tasks/ai-actions"
+import { TaskmasterMark } from "@/components/taskmaster-mark"
 import { DailyPlanPanel } from "@/components/tasks/daily-plan-panel"
 import { ProgressDashboard } from "@/components/tasks/progress-dashboard"
 import {
@@ -554,30 +555,33 @@ export function TaskDashboard({
           <UserButton />
         </div>
 
-        {/* Header area: explains the dashboard and shows live stats from task state. */}
-        <section className="mt-10 grid gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
-          <div>
-            <p className="font-heading text-sm font-semibold tracking-[0.42em] text-brand-primary/90 uppercase">
-              Database task workspace
-            </p>
-            <h1 className="mt-4 max-w-3xl font-heading text-5xl font-light tracking-[0.08em] text-white uppercase sm:text-6xl">
-              Your task command center
+        <section className="mt-8">
+          <div className="flex items-center justify-between gap-6">
+            <h1 className="font-heading text-4xl font-light tracking-[0.12em] text-white uppercase sm:text-5xl">
+              Command Center
             </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-9 text-stone-200">
-              Create, edit, complete, and delete tasks in PostgreSQL. Refresh
-              the page and your tasks will still be here.
-            </p>
+            <Link
+              href="/"
+              aria-label="Return to Taskmaster landing page"
+              className="shrink-0 rounded-full transition hover:scale-105 focus-visible:ring-2 focus-visible:ring-brand-primary focus-visible:ring-offset-4 focus-visible:ring-offset-app-background focus-visible:outline-none"
+            >
+              <TaskmasterMark className="size-16 drop-shadow-[0_0_24px_rgba(251,191,117,0.2)] sm:size-20" />
+            </Link>
           </div>
 
-          <ProgressDashboard
-            tasks={tasks}
-            dailyPlan={dailyPlan}
-            currentUtcDateKey={currentUsageDate}
-          />
+          {/* The metric ribbon spans the workspace, then wraps from four to two
+              to one column before any cell becomes too narrow to scan. */}
+          <div className="mt-6">
+            <ProgressDashboard
+              tasks={tasks}
+              dailyPlan={dailyPlan}
+              currentUtcDateKey={currentUsageDate}
+            />
+          </div>
         </section>
 
         {/* Task controls: opens the create panel without showing the form by default. */}
-        <div className="mt-12 flex flex-wrap items-center justify-between gap-4">
+        <div className="mt-10 flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="font-heading text-xs font-semibold tracking-[0.3em] text-brand-soft uppercase">
               Manage tasks
