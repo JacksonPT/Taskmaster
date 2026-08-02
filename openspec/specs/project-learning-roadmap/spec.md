@@ -11,19 +11,15 @@ The project specification set SHALL map completed Taskmaster work to an ordered 
 - **THEN** Modules 1-11 are identifiable through product foundation, landing page, task management, persistence, authentication, ownership, AI priority, AI completion, and daily planning capabilities
 
 ### Requirement: Ordered remaining roadmap
-After Module 11, Taskmaster SHALL plan remaining work in this order: 11.1 daily-plan sidebar, 12 completion encouragement, 13 task notes/resources, 14 progress dashboard, 15 testing/accessibility/security hardening, and 16 deployment/portfolio readiness.
+After completed Module 12, Taskmaster SHALL plan remaining work in this order: 14 progress dashboard, 15 testing/accessibility/security hardening, and 16 deployment/portfolio readiness. Module 13 task notes/resources is intentionally removed and the remaining modules SHALL retain their established numbers.
 
 #### Scenario: Current next module is selected
 - **WHEN** the project is ready for its next application change
-- **THEN** Module 11.1 sidebar refinement is completed before Module 12 begins
-
-#### Scenario: Sidebar module completes
-- **WHEN** Module 11.1 is verified and archived
-- **THEN** Module 12 completion encouragement becomes the next proposal target
+- **THEN** Module 14 progress dashboard becomes the next proposal target
 
 #### Scenario: Future work continues
 - **WHEN** each remaining module completes
-- **THEN** the next numbered module is proposed without combining multiple future modules into one implementation
+- **THEN** the next numbered remaining module is proposed without combining multiple modules into one implementation
 
 ### Requirement: Proposal before implementation
 Each future module MUST have coherent proposal, design when warranted, capability spec, and task artifacts before application code changes begin.
@@ -60,18 +56,11 @@ The Module 12 proposal SHALL define contextual encouragement shown after a succe
 - **WHEN** sidebar refinement is complete
 - **THEN** the proposal explores message source, generation limits, persistence needs, and completion UI before implementation
 
-### Requirement: Module 13 notes and resources outcome
-The Module 13 proposal SHALL define private notes and useful resources attached to owned tasks.
-
-#### Scenario: Module 13 is proposed
-- **WHEN** completion encouragement is complete
-- **THEN** the proposal addresses data modeling, ownership, validation, editing, and responsive presentation
-
 ### Requirement: Module 14 progress dashboard outcome
 The Module 14 proposal SHALL define meaningful completion, overdue, and progress metrics derived from trusted persisted task data.
 
 #### Scenario: Module 14 is proposed
-- **WHEN** notes and resources are complete
+- **WHEN** Module 12 completion encouragement is complete and the removed Module 13 has no outstanding work
 - **THEN** the proposal distinguishes useful derived metrics from decorative counters and defines their time boundaries
 
 ### Requirement: Module 15 quality hardening outcome
@@ -87,4 +76,3 @@ The final module proposal SHALL cover deployment, environment configuration, CI 
 #### Scenario: Module 16 is proposed
 - **WHEN** quality hardening is complete
 - **THEN** the proposal defines production readiness and a verifiable public project narrative without exposing secrets
-

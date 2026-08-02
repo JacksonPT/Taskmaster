@@ -67,7 +67,6 @@ This project is being built in modules so each step has a clear learning goal.
 11. Daily planning flow
     - 11.1 Collapsible daily-plan sidebar
 12. Completion encouragement messages
-13. Task notes and resources
 14. Dashboard and progress stats
 15. Testing, accessibility, and security hardening
 16. Deployment and portfolio readiness
@@ -215,4 +214,6 @@ The daily focus sheet now uses an expanded-by-default responsive sidebar. Users 
 
 Completing a task now triggers a brief, non-modal amber celebration with a `Task Complete!` status message. The deterministic effect starts only after the owned database mutation succeeds, respects reduced-motion preferences, fades automatically, and uses no Gemini request or persisted presentation state.
 
-Next step: add private task notes and useful resources.
+Module 13 task notes/resources was intentionally removed because it does not serve the intended workflow. The remaining roadmap keeps its established numbering.
+
+Next step: build Module 14 dashboard and progress stats.
