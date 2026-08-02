@@ -4,9 +4,9 @@ context: |
   Product: Taskmaster, an AI-assisted personal task manager built as a step-by-step learning project.
   Stack: Next.js 16 App Router, React 19, TypeScript, Tailwind CSS 4, shadcn/Base UI, Prisma 7, Neon PostgreSQL, Clerk, Vercel AI SDK 7, Google Gemini, and Zod 4.
   Architecture: Next.js Server Components load private data; Client Components own interactive state; authenticated Server Actions validate input and enforce ownership near Prisma access; provider code and secrets remain server-only.
-  Completed modules: 1 project foundation, 2 landing page, 3 task workspace, 4 task lifecycle interactions, 5 Prisma/PostgreSQL foundation, 6 persisted task management, 7 Clerk authentication, 8 private task ownership, 9 AI priority suggestions, 10 AI completion plans, and 11 quota-limited daily planning with persisted manual ordering.
-  Next module: 11.1 refine the daily plan into a collapsible responsive sidebar and remove visible per-task rationale while retaining the main summary.
-  Remaining learning roadmap: 12 completion encouragement, 13 task notes/resources, 14 progress dashboard, 15 testing/accessibility/security hardening, and 16 deployment/portfolio readiness.
+  Completed modules: 1 project foundation, 2 landing page, 3 task workspace, 4 task lifecycle interactions, 5 Prisma/PostgreSQL foundation, 6 persisted task management, 7 Clerk authentication, 8 private task ownership, 9 AI priority suggestions, 10 AI completion plans, 11 quota-limited daily planning with persisted manual ordering, 11.1 responsive daily-plan sidebar, and 12 deterministic completion encouragement.
+  Next module: 13 add private notes and useful resources to owned tasks.
+  Remaining learning roadmap: 13 task notes/resources, 14 progress dashboard, 15 testing/accessibility/security hardening, and 16 deployment/portfolio readiness.
   Product constraints: preserve user-owned data isolation, validate all AI output, keep Gemini calls bounded, never expose environment secrets, and do not spend AI quota for deterministic UI operations.
   Teaching style: add concise comments for non-obvious technology and control flow so files can be read top-down; avoid comments that merely restate syntax.
   Collaboration style: implement one module at a time. During apply, ask one focused question at a time before each major task group, then continue after the answer. End each module with changed files in reading order, verification results, a small flow, and reusable lessons.
