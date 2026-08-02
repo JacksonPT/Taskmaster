@@ -21,22 +21,22 @@ The app will eventually support:
 
 ## Tech Stack
 
-| Area | Technology | Purpose |
-| --- | --- | --- |
-| Framework | Next.js | Full-stack React app structure |
-| Language | TypeScript | Type safety and better developer tooling |
-| UI | React | Component-based interface |
-| Styling | Tailwind CSS | Utility-first styling system |
-| Components | shadcn/ui and Base UI | Accessible, reusable UI building blocks |
-| Icons | Lucide React | Consistent icon system |
-| Formatting | Prettier | Consistent code formatting |
-| Linting | ESLint | Code quality checks |
-| Database | PostgreSQL | Persistent relational data storage |
-| ORM | Prisma | Type-safe database queries and migrations |
-| Auth | Clerk | User accounts and protected routes |
-| AI | Vercel AI SDK, Google Gemini, and Zod | Structured, validated task recommendations |
-| Deployment | Vercel | Hosting for the Next.js app |
-| Database Hosting | Neon or Supabase | Hosted PostgreSQL database |
+| Area             | Technology                            | Purpose                                    |
+| ---------------- | ------------------------------------- | ------------------------------------------ |
+| Framework        | Next.js                               | Full-stack React app structure             |
+| Language         | TypeScript                            | Type safety and better developer tooling   |
+| UI               | React                                 | Component-based interface                  |
+| Styling          | Tailwind CSS                          | Utility-first styling system               |
+| Components       | shadcn/ui and Base UI                 | Accessible, reusable UI building blocks    |
+| Icons            | Lucide React                          | Consistent icon system                     |
+| Formatting       | Prettier                              | Consistent code formatting                 |
+| Linting          | ESLint                                | Code quality checks                        |
+| Database         | PostgreSQL                            | Persistent relational data storage         |
+| ORM              | Prisma                                | Type-safe database queries and migrations  |
+| Auth             | Clerk                                 | User accounts and protected routes         |
+| AI               | Vercel AI SDK, Google Gemini, and Zod | Structured, validated task recommendations |
+| Deployment       | Vercel                                | Hosting for the Next.js app                |
+| Database Hosting | Neon or Supabase                      | Hosted PostgreSQL database                 |
 
 ## MVP Scope
 
@@ -67,7 +67,11 @@ This project is being built in modules so each step has a clear learning goal.
 11. Daily planning flow
     - 11.1 Collapsible daily-plan sidebar
 12. Completion encouragement messages
+
+<!-- Module 13 was intentionally removed; established module numbers do not shift. -->
+
 14. Dashboard and progress stats
+    - 14.1 Simplified command-center header and responsive metric ribbon
 15. Testing, accessibility, and security hardening
 16. Deployment and portfolio readiness
 
@@ -218,6 +222,6 @@ Completing a task now triggers a brief, non-modal amber celebration with a `Task
 
 Module 13 task notes/resources was intentionally removed because it does not serve the intended workflow. The remaining roadmap keeps its established numbering.
 
-The header now contains a focused progress dashboard derived from the user's loaded owned tasks and current daily plan. It reports active and overdue work, completions in the Monday-start UTC week, active priority balance, and current UTC daily-focus progress without calling Gemini. Historical Done tasks without a trusted completion timestamp are excluded from weekly totals.
+The workspace now pairs a simplified `Command Center` header with the shared Taskmaster mark and a compact responsive metric ribbon. The ribbon derives active and overdue work, completions in the Monday-start UTC week, and current UTC daily-focus progress from the user's loaded owned tasks and plan without calling Gemini. Historical Done tasks without a trusted completion timestamp remain excluded from weekly totals.
 
 Next step: harden testing, accessibility, security regression coverage, and failure paths in Module 15.
