@@ -151,6 +151,27 @@ export function TaskDashboard({
   const [isReorderingDailyPlan, setIsReorderingDailyPlan] = useState(false)
   const [dailyPlanError, setDailyPlanError] = useState<string | null>(null)
 
+  // This key is ephemeral UI state, not task data. Incrementing it remounts the
+  // celebration so each trusted completion can run a fresh animation.
+  const [completionCelebrationId, setCompletionCelebrationId] = useState(0)
+
+  useEffect(() => {
+    if (completionCelebrationId === 0) {
+      return
+    }
+
+    // Animation events normally remove the overlay. This keyed timeout is a
+    // fallback for interrupted CSS or browser events, so it can never stick.
+    const activeCelebrationId = completionCelebrationId
+    const timeoutId = window.setTimeout(() => {
+      setCompletionCelebrationId((currentId) =>
+        currentId === activeCelebrationId ? 0 : currentId
+      )
+    }, 1600)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [completionCelebrationId])
+
   // Keep a long-open tab usable when the server-enforced UTC allowance resets.
   // The server still performs the authoritative check on every generation.
   useEffect(() => {
@@ -515,12 +536,43 @@ export function TaskDashboard({
     setTasks((currentTasks) =>
       currentTasks.map((task) => (task.id === taskId ? updatedTask : task))
     )
+
+    // Celebrate only the database-backed result. Reopens and failed actions
+    // never return a successful Done state and therefore cannot trigger it.
+    if (updatedTask.status === "Done") {
+      setCompletionCelebrationId((currentId) => currentId + 1)
+    }
   }
 
   // Main dashboard render. This JSX controls what the user sees on `/tasks`:
   // page shell, back navigation, stats, add/edit controls, form, and task cards.
   return (
     <main className="min-h-svh bg-app-background bg-[radial-gradient(circle_at_top_left,rgba(251,191,117,0.08),transparent_32%)] px-6 py-8 text-app-foreground sm:px-8 lg:px-12">
+      {completionCelebrationId > 0 ? (
+        <div
+          key={completionCelebrationId}
+          className="pointer-events-none fixed inset-0 z-50 grid animate-[task-completion-overlay_1500ms_ease-out_both] place-items-center overflow-hidden bg-[radial-gradient(circle_at_center,rgba(254,243,199,0.88)_0%,rgba(251,191,117,0.52)_38%,rgba(7,11,16,0.58)_100%)] px-6 text-center motion-reduce:animate-[task-completion-overlay-reduced_1500ms_ease_both]"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          onAnimationEnd={(event) => {
+            // Ignore the nested text animation so only the overlay's lifecycle
+            // clears the current instance; a newer keyed celebration survives.
+            if (event.target !== event.currentTarget) {
+              return
+            }
+
+            setCompletionCelebrationId((currentId) =>
+              currentId === completionCelebrationId ? 0 : currentId
+            )
+          }}
+        >
+          <p className="animate-[task-completion-message_1500ms_cubic-bezier(0.22,1,0.36,1)_both] font-heading text-4xl font-semibold tracking-[0.12em] text-amber-50 uppercase drop-shadow-[0_4px_24px_rgba(7,11,16,0.9)] motion-reduce:animate-[task-completion-message-reduced_1500ms_ease_both] sm:text-6xl lg:text-7xl">
+            Task Complete!
+          </p>
+        </div>
+      ) : null}
+
       <div className="mx-auto max-w-6xl">
         {/* Navigation includes the Clerk user menu so users can manage or end their session. */}
         <div className="flex items-center justify-between gap-4">
