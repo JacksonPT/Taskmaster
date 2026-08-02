@@ -2,17 +2,7 @@
 
 // This component needs state, effects, and event handlers, so it must be a Client Component.
 import { type FormEvent, useEffect, useState } from "react"
-import {
-  ArrowLeft,
-  ListChecks,
-  LoaderCircle,
-  Plus,
-  Sparkles,
-  Timer,
-  Trophy,
-  X,
-} from "lucide-react"
-import type { LucideIcon } from "lucide-react"
+import { ArrowLeft, LoaderCircle, Plus, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { UserButton } from "@clerk/nextjs"
 
@@ -29,6 +19,7 @@ import {
   suggestTaskPriority,
 } from "@/app/tasks/ai-actions"
 import { DailyPlanPanel } from "@/components/tasks/daily-plan-panel"
+import { ProgressDashboard } from "@/components/tasks/progress-dashboard"
 import {
   TaskCard,
   type Task,
@@ -72,26 +63,6 @@ const priorityRank: Record<TaskPriority, number> = {
   High: 0,
   Medium: 1,
   Low: 2,
-}
-
-type StatCardProps = {
-  icon: LucideIcon
-  label: string
-  value: number
-}
-
-function StatCard({ icon: Icon, label, value }: StatCardProps) {
-  return (
-    <div className="rounded-3xl border border-app-border bg-app-panel p-5 shadow-lg shadow-black/15">
-      <Icon className="size-5 text-amber-200" />
-      <p className="mt-4 text-4xl font-bold tracking-tight text-white">
-        {value}
-      </p>
-      <p className="mt-2 text-xs font-semibold tracking-[0.18em] text-stone-300 uppercase">
-        {label}
-      </p>
-    </div>
-  )
 }
 
 type TaskDashboardProps = {
@@ -196,9 +167,6 @@ export function TaskDashboard({
   // These stats are derived from state, so they update automatically after every task action.
   const completedCount = tasks.filter((task) => task.status === "Done").length
   const activeCount = tasks.length - completedCount
-  const highPriorityCount = tasks.filter(
-    (task) => task.priority === "High"
-  ).length
   const currentUsageDate = getUtcDateKey()
   // Comparing date keys during every render also covers hydration or an
   // in-flight response that crosses UTC midnight before the timer runs.
@@ -601,19 +569,11 @@ export function TaskDashboard({
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard
-              icon={ListChecks}
-              label="Total tasks"
-              value={tasks.length}
-            />
-            <StatCard icon={Timer} label="Active" value={activeCount} />
-            <StatCard
-              icon={Trophy}
-              label="High priority"
-              value={highPriorityCount}
-            />
-          </div>
+          <ProgressDashboard
+            tasks={tasks}
+            dailyPlan={dailyPlan}
+            currentUtcDateKey={currentUsageDate}
+          />
         </section>
 
         {/* Task controls: opens the create panel without showing the form by default. */}
