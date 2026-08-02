@@ -2,50 +2,8 @@ import { ArrowRight, CheckCircle2, LockKeyhole } from "lucide-react"
 import Link from "next/link"
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
 
+import { TaskmasterMark } from "@/components/taskmaster-mark"
 import { Button } from "@/components/ui/button"
-
-// Inline SVG keeps the brand mark crisp without introducing a separate asset.
-// Because it is inline, we can style it with CSS variables from globals.css.
-function TaskmasterMark() {
-  return (
-    <svg
-      aria-hidden="true"
-      className="size-28 drop-shadow-[0_0_36px_rgba(251,191,117,0.24)] sm:size-36"
-      viewBox="0 0 200 200"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <linearGradient id="mark-gradient" x1="36" y1="30" x2="164" y2="174">
-          <stop stopColor="#fff1c2" />
-          <stop offset="0.42" stopColor="#f4b38e" />
-          <stop offset="1" stopColor="#8f5d4b" />
-        </linearGradient>
-        <mask id="mark-cutouts">
-          <rect width="200" height="200" fill="white" />
-          <ellipse cx="100" cy="45" rx="42" ry="43" fill="black" />
-          <ellipse cx="62" cy="128" rx="36" ry="47" fill="black" />
-          <ellipse cx="138" cy="128" rx="36" ry="47" fill="black" />
-        </mask>
-      </defs>
-
-      <circle
-        cx="100"
-        cy="100"
-        r="82"
-        stroke="url(#mark-gradient)"
-        strokeWidth="12"
-      />
-      <circle
-        cx="100"
-        cy="100"
-        r="70"
-        fill="url(#mark-gradient)"
-        mask="url(#mark-cutouts)"
-      />
-    </svg>
-  )
-}
 
 export default function Page() {
   return (
@@ -58,7 +16,7 @@ export default function Page() {
         {/* The landing hero uses one column on mobile and two columns on large screens. */}
         <div className="relative grid w-full max-w-6xl items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
           <div className="mx-auto flex max-w-2xl flex-col items-center text-center lg:items-start lg:text-left">
-            <TaskmasterMark />
+            <TaskmasterMark className="size-28 drop-shadow-[0_0_36px_rgba(251,191,117,0.24)] sm:size-36" />
 
             <p className="mt-8 font-heading text-sm font-semibold tracking-[0.48em] text-brand-soft uppercase">
               Task planning for focused people
