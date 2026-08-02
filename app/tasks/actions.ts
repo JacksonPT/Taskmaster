@@ -115,6 +115,7 @@ function mapTaskFromDatabase(task: TaskModel): Task {
     status: statusFromDb[task.status],
     dueDate: formatDueDateForDisplay(task.dueDate),
     dueDateInput: formatDueDateForInput(task.dueDate),
+    completedAt: task.completedAt?.toISOString() ?? "",
     priorityReason: task.priorityReason ?? "",
     aiSuggestion: task.aiSuggestion ?? "",
     aiSteps: task.aiSteps,
@@ -309,6 +310,7 @@ export async function toggleTaskComplete(taskId: string) {
     },
     data: {
       status: nextStatus,
+      completedAt: nextStatus === "DONE" ? new Date() : null,
     },
   })
 
