@@ -128,6 +128,8 @@ Taskmaster uses Neon-hosted PostgreSQL with Prisma as the TypeScript database la
 
 The Prisma `Task` model stores Clerk's `userId` as the ownership key. PostgreSQL indexes that field so user-scoped queries remain efficient as the table grows. The field remains nullable only for pre-auth development rows; new application writes always include an owner.
 
+Task completion stores a dedicated nullable `completedAt` timestamp in the same trusted status update. Reopening clears it, and older completed rows remain historically unknown instead of being assigned an invented completion date.
+
 ## Authentication Setup
 
 Taskmaster uses Clerk for sign-in, sign-up, session handling, and protected server resources.
@@ -216,4 +218,6 @@ Completing a task now triggers a brief, non-modal amber celebration with a `Task
 
 Module 13 task notes/resources was intentionally removed because it does not serve the intended workflow. The remaining roadmap keeps its established numbering.
 
-Next step: build Module 14 dashboard and progress stats.
+The header now contains a focused progress dashboard derived from the user's loaded owned tasks and current daily plan. It reports active and overdue work, completions in the Monday-start UTC week, active priority balance, and current UTC daily-focus progress without calling Gemini. Historical Done tasks without a trusted completion timestamp are excluded from weekly totals.
+
+Next step: harden testing, accessibility, security regression coverage, and failure paths in Module 15.
