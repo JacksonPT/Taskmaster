@@ -587,7 +587,7 @@ export function TaskDashboard({
               Manage tasks
             </p>
             <h2 className="mt-2 text-2xl font-semibold text-white">
-              To create new tasks select Add Task
+              Select Add Task to create a new task
             </h2>
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
