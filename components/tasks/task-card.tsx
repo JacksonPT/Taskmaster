@@ -24,6 +24,7 @@ export type Task = {
   status: TaskStatus
   dueDate: string
   dueDateInput: string
+  completedAt: string
   priorityReason: string
   aiSuggestion: string
   aiSteps: string[]
