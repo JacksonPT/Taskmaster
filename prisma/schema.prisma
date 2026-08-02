@@ -56,9 +56,11 @@ model Task {
   // Application queries never return null-owned rows, and all new tasks set userId.
   userId String?
 
-  // Timestamps are useful for sorting, auditing, and dashboard stats later.
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  // updatedAt changes for edits and cannot prove when work finished. completedAt
+  // is set only by the trusted complete transition and cleared on reopen.
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  completedAt DateTime?
 
   // A task can appear in the user's current daily plan with an order and reason.
   dailyPlanItems DailyPlanItem[]
