@@ -213,4 +213,6 @@ The dashboard can now compare up to 25 active tasks in one AI-assisted daily pla
 
 The daily focus sheet now uses an expanded-by-default responsive sidebar. Users can collapse it without changing saved plan data, while focus badges, card ordering, completion state, and manual movement continue to use the existing persisted plan.
 
-Next step: add contextual encouragement when users complete tasks.
+Completing a task now triggers a brief, non-modal amber celebration with a `Task Complete!` status message. The deterministic effect starts only after the owned database mutation succeeds, respects reduced-motion preferences, fades automatically, and uses no Gemini request or persisted presentation state.
+
+Next step: add private task notes and useful resources.
