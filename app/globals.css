@@ -188,3 +188,73 @@
     @apply font-sans;
   }
 }
+
+/* The overlay uses these named sequences through Tailwind animation utilities,
+   keeping motion selection next to the JSX while the timing remains readable. */
+@keyframes task-completion-overlay {
+  0% {
+    opacity: 0;
+  }
+
+  18%,
+  62% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes task-completion-message {
+  0% {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.86);
+  }
+
+  20% {
+    opacity: 1;
+    transform: translateY(0) scale(1.04);
+  }
+
+  52%,
+  72% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(1.02);
+  }
+}
+
+@keyframes task-completion-overlay-reduced {
+  0% {
+    opacity: 0;
+  }
+
+  20%,
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes task-completion-message-reduced {
+  0% {
+    opacity: 0;
+  }
+
+  20%,
+  70% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
