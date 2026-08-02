@@ -25,7 +25,7 @@ Taskmaster SHALL persist a nullable server-generated completion timestamp with t
 
 ### Requirement: Focused productivity metrics
 
-The authenticated workspace SHALL deterministically derive active, overdue, current-week completion, and active-priority metrics from the current user's loaded task records without an AI request.
+The authenticated workspace SHALL deterministically derive active, overdue, and current-week completion metrics from the current user's loaded task records without an AI request.
 
 #### Scenario: Active tasks are counted
 
@@ -41,11 +41,6 @@ The authenticated workspace SHALL deterministically derive active, overdue, curr
 
 - **WHEN** a currently Done task has a completion timestamp from Monday `00:00 UTC` through now
 - **THEN** it contributes to completed-this-week count
-
-#### Scenario: Active priorities are distributed
-
-- **WHEN** active owned tasks have High, Medium, or Low priority
-- **THEN** the dashboard reports each priority count and its proportion of active work
 
 ### Requirement: Current daily-focus progress
 
@@ -68,22 +63,27 @@ The dashboard SHALL report completed-versus-planned progress only for a saved da
 
 ### Requirement: Responsive progress presentation
 
-The progress dashboard SHALL present its metrics in the established Taskmaster visual language and remain readable without horizontal overflow on desktop and narrow screens.
+The progress dashboard SHALL appear as one compact full-width metric ribbon below the `Command Center` title and above task controls/cards, SHALL contain only Active, Overdue, Completed this week, and Daily focus, and SHALL remain readable without horizontal overflow.
 
 #### Scenario: Wide workspace
 
-- **WHEN** the dashboard has wide-screen space
-- **THEN** summary metrics and distributions use a scannable multi-column hierarchy
+- **WHEN** the dashboard reaches the configured wide breakpoint
+- **THEN** all four metrics appear in one horizontal row of visually connected cells
+
+#### Scenario: Intermediate workspace
+
+- **WHEN** four readable cells cannot fit in one row
+- **THEN** the ribbon wraps into two columns without becoming a separate oversized panel
 
 #### Scenario: Narrow workspace
 
-- **WHEN** the viewport cannot support the wide hierarchy
-- **THEN** metrics stack or wrap with readable labels, values, and progress indicators
+- **WHEN** the viewport cannot support two readable columns
+- **THEN** metric cells stack with readable labels, values, details, and icons
 
 #### Scenario: Workspace state changes
 
 - **WHEN** task or current-plan state changes successfully in the client
-- **THEN** affected metrics update without requiring a page refresh
+- **THEN** affected ribbon metrics update without requiring a page refresh
 
 ### Requirement: Dashboard data boundaries
 
