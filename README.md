@@ -94,7 +94,12 @@ Run code quality checks:
 ```bash
 pnpm lint
 pnpm typecheck
+pnpm test
+pnpm test:integration:docker
+pnpm test:e2e
 ```
+
+Run only automated browser accessibility checks with `pnpm test:a11y`, or run the complete local Module 15 workflow with `pnpm test:all`.
 
 Generate the Prisma client after changing the database schema:
 
@@ -133,6 +138,20 @@ Taskmaster uses Neon-hosted PostgreSQL with Prisma as the TypeScript database la
 The Prisma `Task` model stores Clerk's `userId` as the ownership key. PostgreSQL indexes that field so user-scoped queries remain efficient as the table grows. The field remains nullable only for pre-auth development rows; new application writes always include an owner.
 
 Task completion stores a dedicated nullable `completedAt` timestamp in the same trusted status update. Reopening clears it, and older completed rows remain historically unknown instead of being assigned an invented completion date.
+
+## Testing And Quality
+
+Taskmaster uses risk-based test layers instead of one broad runner:
+
+- `pnpm test` runs fast Vitest unit and React Testing Library component tests without PostgreSQL, Clerk credentials, or Gemini.
+- `pnpm test:integration:docker` starts a disposable local PostgreSQL container, applies all migrations, runs serial ownership/constraint/quota/transaction tests, and removes its data afterward.
+- `pnpm test:e2e` builds and starts the production-like Next.js app for credential-free Playwright route, keyboard, responsive, reduced-motion, and axe checks.
+- `pnpm test:a11y` runs the tagged automated axe browser checks.
+- `pnpm test:all` runs the fast, disposable-database, and browser layers in sequence.
+
+Integration helpers require the dedicated local `TEST_DATABASE_URL` and reject missing configuration, `DATABASE_URL` reuse, remote hosts, other ports, and non-test database names. Automated provider tests use controlled doubles and never read a live Gemini key or spend quota. Browser tests intentionally omit authenticated CRUD until dedicated Clerk test-instance credentials and isolated test users exist; Server Action and PostgreSQL tests cover authentication ordering and cross-user isolation meanwhile.
+
+Before completing a module, manually check keyboard order and visible focus, 200% and 400% zoom/reflow, narrow-screen overflow, contrast, reduced motion, and status/error announcement quality. See `tests/README.md` for test boundaries and Docker debugging commands.
 
 ## Authentication Setup
 
@@ -224,4 +243,6 @@ Module 13 task notes/resources was intentionally removed because it does not ser
 
 The workspace now pairs a simplified `Command Center` header with the shared Taskmaster mark and a compact responsive metric ribbon. The ribbon derives active and overdue work, completions in the Monday-start UTC week, and current UTC daily-focus progress from the user's loaded owned tasks and plan without calling Gemini. Historical Done tasks without a trusted completion timestamp remain excluded from weekly totals.
 
-Next step: harden testing, accessibility, security regression coverage, and failure paths in Module 15.
+Module 15 adds layered Vitest, Testing Library, disposable PostgreSQL, Playwright, and axe coverage around deterministic metrics, runtime validation, authentication and ownership, structured AI output, quota concurrency, rollback, responsive behavior, and accessible interaction. Expected task and planning failures now preserve committed state and expose retryable feedback, while unexpected workspace-load failures use a safe route recovery screen.
+
+Next step: deployment, environment configuration, CI checks, observability, final documentation, and portfolio readiness in Module 16.
