@@ -12,6 +12,7 @@ export const prioritySuggestionSchema = z.object({
     .describe("The recommended priority for the supplied work item."),
   explanation: z
     .string()
+    .trim()
     .min(1)
     .max(240)
     .describe("A concise explanation for the recommendation."),
@@ -25,12 +26,17 @@ export type PrioritySuggestionInput = {
   dueDate: string
 }
 
+type PriorityTextGenerator = (
+  options: Parameters<typeof generateText>[0]
+) => Promise<{ output: unknown }>
+
 // This function is provider-facing infrastructure. Callers do not need to know
 // the Gemini model id, prompt format, or structured-output implementation.
 export async function generatePrioritySuggestion(
-  input: PrioritySuggestionInput
+  input: PrioritySuggestionInput,
+  generator = generateText as unknown as PriorityTextGenerator
 ): Promise<PrioritySuggestion> {
-  const { output } = await generateText({
+  const { output } = await generator({
     // Gemini Flash is fast and available through Google AI Studio's free tier,
     // subject to Google's current quota and regional policies.
     model: google("gemini-flash-latest"),
@@ -49,5 +55,5 @@ export async function generatePrioritySuggestion(
     prompt: `Classify this task data:\n${JSON.stringify(input, null, 2)}`,
   })
 
-  return output
+  return prioritySuggestionSchema.parse(output)
 }

@@ -1,7 +1,7 @@
 "use client"
 
 // This component needs state, effects, and event handlers, so it must be a Client Component.
-import { type FormEvent, useEffect, useState } from "react"
+import { type FormEvent, useEffect, useRef, useState } from "react"
 import { ArrowLeft, LoaderCircle, Plus, Sparkles, X } from "lucide-react"
 import Link from "next/link"
 import { UserButton } from "@clerk/nextjs"
@@ -33,6 +33,7 @@ import {
   type DailyPlanState,
   type DailyPlanView,
 } from "@/lib/daily-plan"
+import { orderTasksForWorkspace } from "@/lib/tasks/order"
 import { cn } from "@/lib/utils"
 
 type TaskFormState = {
@@ -45,6 +46,8 @@ type TaskFormState = {
 
 // This tracks which form panel should be visible. null means no form is open.
 type ActivePanel = "add" | "edit" | null
+type TaskLifecycleAction = "delete" | "toggle"
+type TaskFormErrors = Partial<Record<keyof TaskFormState, string>>
 
 const emptyForm: TaskFormState = {
   title: "",
@@ -57,14 +60,6 @@ const emptyForm: TaskFormState = {
 // Shared field classes keep inputs/selects visually consistent.
 const fieldClass =
   "w-full rounded-2xl border border-app-border bg-white/[0.06] px-4 py-3 text-sm text-white outline-none transition placeholder:text-stone-500 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
-
-// Sorting uses normal deterministic code after AI has classified each task.
-// Lower numbers appear first; no additional model request is needed to order rows.
-const priorityRank: Record<TaskPriority, number> = {
-  High: 0,
-  Medium: 1,
-  Low: 2,
-}
 
 type TaskDashboardProps = {
   initialTasks: Task[]
@@ -91,6 +86,10 @@ export function TaskDashboard({
   // These small state values help the user understand when a database action is running or failed.
   const [isSaving, setIsSaving] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [formFieldErrors, setFormFieldErrors] = useState<TaskFormErrors>({})
+  const addTaskButtonRef = useRef<HTMLButtonElement>(null)
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const panelReturnFocusRef = useRef<HTMLButtonElement | null>(null)
 
   // AI requests have independent loading/error state because suggesting and
   // saving are separate server operations.
@@ -104,6 +103,12 @@ export function TaskDashboard({
     taskId: string
     message: string
   } | null>(null)
+  const [pendingTaskActions, setPendingTaskActions] = useState<
+    Record<string, TaskLifecycleAction>
+  >({})
+  const [taskActionErrors, setTaskActionErrors] = useState<
+    Record<string, string>
+  >({})
 
   // The daily plan is a persisted snapshot. Its generation counter is separate
   // so manual reordering never consumes or resets AI allowance.
@@ -165,6 +170,23 @@ export function TaskDashboard({
     return () => window.clearTimeout(timeoutId)
   }, [dailyUsageDate])
 
+  useEffect(() => {
+    if (activePanel) {
+      titleInputRef.current?.focus()
+      return
+    }
+
+    const returnFocus = panelReturnFocusRef.current
+
+    if (returnFocus) {
+      const target = returnFocus.isConnected
+        ? returnFocus
+        : addTaskButtonRef.current
+      target?.focus()
+      panelReturnFocusRef.current = null
+    }
+  }, [activePanel])
+
   // These stats are derived from state, so they update automatically after every task action.
   const completedCount = tasks.filter((task) => task.status === "Done").length
   const activeCount = tasks.length - completedCount
@@ -181,45 +203,24 @@ export function TaskDashboard({
     dailyPlan?.items.map((item, index) => [item.taskId, index + 1]) ?? []
   )
 
-  // Copy before sorting because Array.sort() mutates the array it runs on.
-  // A saved focus position takes precedence for active tasks. Unplanned active
-  // tasks fall back to the Module 9 priority order; completed tasks remain last.
-  const orderedTasks = [...tasks].sort((taskA, taskB) => {
-    const completionDifference =
-      Number(taskA.status === "Done") - Number(taskB.status === "Done")
-
-    if (completionDifference !== 0) {
-      return completionDifference
-    }
-
-    if (taskA.status === "Done" && taskB.status === "Done") {
-      return 0
-    }
-
-    const dailyPositionA =
-      dailyPlanPositions.get(taskA.id) ?? Number.MAX_SAFE_INTEGER
-    const dailyPositionB =
-      dailyPlanPositions.get(taskB.id) ?? Number.MAX_SAFE_INTEGER
-
-    if (dailyPositionA !== dailyPositionB) {
-      return dailyPositionA - dailyPositionB
-    }
-
-    return priorityRank[taskA.priority] - priorityRank[taskB.priority]
-  })
+  const orderedTasks = orderTasksForWorkspace(tasks, dailyPlanPositions)
 
   // Resetting means closing any panel and clearing the form back to default values.
   function resetForm() {
     setForm(emptyForm)
     setFormError(null)
+    setFormFieldErrors({})
     setSuggestionError(null)
     setActivePanel(null)
     setEditingTaskId(null)
   }
 
   // Opening add clears any existing edit state so add/edit panels stay mutually exclusive.
-  function openAddPanel() {
+  function openAddPanel(trigger: HTMLButtonElement) {
+    panelReturnFocusRef.current = trigger
     setForm(emptyForm)
+    setFormError(null)
+    setFormFieldErrors({})
     setSuggestionError(null)
     setEditingTaskId(null)
     setActivePanel("add")
@@ -234,17 +235,22 @@ export function TaskDashboard({
 
     if (!title || !description) {
       setFormError("Title and description are required.")
+      setFormFieldErrors({
+        title: title ? undefined : "Enter a task title.",
+        description: description ? undefined : "Enter a task description.",
+      })
       return
     }
 
     setIsSaving(true)
     setFormError(null)
+    setFormFieldErrors({})
 
     //EDIT SUBMIT
     // If the edit panel is active, update the matching task instead of creating a new one.
     if (activePanel === "edit" && editingTaskId) {
       try {
-        const updatedTask = await updateTask(editingTaskId, {
+        const result = await updateTask(editingTaskId, {
           title,
           description,
           priority: form.priority,
@@ -252,9 +258,20 @@ export function TaskDashboard({
           dueDate: form.dueDate,
         })
 
+        if (!result.success) {
+          setFormError(result.message)
+          setFormFieldErrors({
+            title: result.fieldErrors?.title?.[0],
+            description: result.fieldErrors?.description?.[0],
+            priority: result.fieldErrors?.priority?.[0],
+            dueDate: result.fieldErrors?.dueDate?.[0],
+          })
+          return
+        }
+
         setTasks((currentTasks) =>
           currentTasks.map((task) =>
-            task.id === editingTaskId ? updatedTask : task
+            task.id === editingTaskId ? result.task : task
           )
         )
 
@@ -277,7 +294,7 @@ export function TaskDashboard({
 
     //CREATE SUBMIT
     try {
-      const createdTask = await createTask({
+      const result = await createTask({
         title,
         description,
         priority: form.priority,
@@ -285,8 +302,19 @@ export function TaskDashboard({
         dueDate: form.dueDate,
       })
 
+      if (!result.success) {
+        setFormError(result.message)
+        setFormFieldErrors({
+          title: result.fieldErrors?.title?.[0],
+          description: result.fieldErrors?.description?.[0],
+          priority: result.fieldErrors?.priority?.[0],
+          dueDate: result.fieldErrors?.dueDate?.[0],
+        })
+        return
+      }
+
       // Add the returned database row at the top of the list so it appears immediately.
-      setTasks((currentTasks) => [createdTask, ...currentTasks])
+      setTasks((currentTasks) => [result.task, ...currentTasks])
 
       resetForm()
     } catch (error) {
@@ -299,8 +327,11 @@ export function TaskDashboard({
   }
 
   // Load the selected task into the form, then show the edit panel.
-  function handleEdit(task: Task) {
+  function handleEdit(task: Task, trigger: HTMLButtonElement) {
+    panelReturnFocusRef.current = trigger
     setPlanError(null)
+    setFormError(null)
+    setFormFieldErrors({})
     setActivePanel("edit")
     setEditingTaskId(task.id)
     setForm({
@@ -469,47 +500,113 @@ export function TaskDashboard({
 
   // Delete calls the database first, then removes the task from local UI state.
   async function handleDelete(taskId: string) {
-    await deleteTask(taskId)
-
-    setTasks((currentTasks) =>
-      currentTasks.filter((task) => task.id !== taskId)
-    )
-    setDailyPlan((currentPlan) => {
-      if (!currentPlan) {
-        return null
-      }
-
-      const remainingItems = currentPlan.items.filter(
-        (item) => item.taskId !== taskId
-      )
-
-      return remainingItems.length > 0
-        ? { ...currentPlan, items: remainingItems }
-        : null
-    })
-
-    if (editingTaskId === taskId) {
-      resetForm()
+    if (pendingTaskActions[taskId]) {
+      return
     }
 
-    if (planError?.taskId === taskId) {
-      setPlanError(null)
+    setPendingTaskActions((current) => ({ ...current, [taskId]: "delete" }))
+    setTaskActionErrors((current) => {
+      const next = { ...current }
+      delete next[taskId]
+      return next
+    })
+
+    try {
+      const result = await deleteTask(taskId)
+
+      if (!result.success) {
+        setTaskActionErrors((current) => ({
+          ...current,
+          [taskId]: result.message,
+        }))
+        return
+      }
+
+      setTasks((currentTasks) =>
+        currentTasks.filter((task) => task.id !== taskId)
+      )
+      setDailyPlan((currentPlan) => {
+        if (!currentPlan) {
+          return null
+        }
+
+        const remainingItems = currentPlan.items.filter(
+          (item) => item.taskId !== taskId
+        )
+
+        return remainingItems.length > 0
+          ? { ...currentPlan, items: remainingItems }
+          : null
+      })
+
+      if (editingTaskId === taskId) {
+        resetForm()
+      }
+
+      if (planError?.taskId === taskId) {
+        setPlanError(null)
+      }
+    } catch {
+      setTaskActionErrors((current) => ({
+        ...current,
+        [taskId]:
+          "Could not delete the task. Check your connection and try again.",
+      }))
+    } finally {
+      setPendingTaskActions((current) => {
+        const next = { ...current }
+        delete next[taskId]
+        return next
+      })
     }
   }
 
   // Send only the task id. The Server Action reads the trusted current status
   // from PostgreSQL and returns the updated row.
   async function handleToggleComplete(taskId: string) {
-    const updatedTask = await toggleTaskComplete(taskId)
+    if (pendingTaskActions[taskId]) {
+      return
+    }
 
-    setTasks((currentTasks) =>
-      currentTasks.map((task) => (task.id === taskId ? updatedTask : task))
-    )
+    setPendingTaskActions((current) => ({ ...current, [taskId]: "toggle" }))
+    setTaskActionErrors((current) => {
+      const next = { ...current }
+      delete next[taskId]
+      return next
+    })
 
-    // Celebrate only the database-backed result. Reopens and failed actions
-    // never return a successful Done state and therefore cannot trigger it.
-    if (updatedTask.status === "Done") {
-      setCompletionCelebrationId((currentId) => currentId + 1)
+    try {
+      const result = await toggleTaskComplete(taskId)
+
+      if (!result.success) {
+        setTaskActionErrors((current) => ({
+          ...current,
+          [taskId]: result.message,
+        }))
+        return
+      }
+
+      setTasks((currentTasks) =>
+        currentTasks.map((task) => (task.id === taskId ? result.task : task))
+      )
+
+      // Celebrate only the database-backed result. Reopens and failed actions
+      // never return a successful Done state and therefore cannot trigger it.
+      if (result.task.status === "Done") {
+        setCompletionCelebrationId((currentId) => currentId + 1)
+      }
+    } catch {
+      setTaskActionErrors((current) => ({
+        ...current,
+        [taskId]:
+          "Could not update the task. Check your connection and try again.",
+      }))
+    } finally {
+      setPendingTaskActions((current) => {
+        const next = { ...current }
+        delete next[taskId]
+        return next
+      })
     }
   }
 
@@ -593,6 +690,7 @@ export function TaskDashboard({
           <div className="flex flex-col items-start gap-2 sm:items-end">
             <div className="flex flex-wrap gap-3">
               <Button
+                ref={addTaskButtonRef}
                 type="button"
                 variant="outline"
                 disabled={
@@ -620,7 +718,7 @@ export function TaskDashboard({
               <Button
                 type="button"
                 className="h-11 rounded-full bg-brand-primary px-5 text-stone-950 hover:bg-brand-primary-hover"
-                onClick={openAddPanel}
+                onClick={(event) => openAddPanel(event.currentTarget)}
               >
                 <Plus />
                 Add Task
@@ -658,7 +756,7 @@ export function TaskDashboard({
                 type="button"
                 variant="outline"
                 className="rounded-full border-app-border bg-white/5 text-stone-100 hover:bg-white/10"
-                onClick={resetForm}
+                onClick={() => resetForm()}
               >
                 <X />
                 Cancel
@@ -670,14 +768,21 @@ export function TaskDashboard({
               onSubmit={handleSubmit}
               className="mt-6 grid gap-4 lg:grid-cols-4"
             >
-              <label className="lg:col-span-2">
+              <label className="lg:col-span-2" htmlFor="task-title">
                 <span className="text-sm font-medium text-stone-300">
                   Title
                 </span>
                 <input
+                  ref={titleInputRef}
+                  id="task-title"
                   className="mt-2 w-full rounded-2xl border border-app-border bg-white/6 px-4 py-3 text-sm text-white transition outline-none placeholder:text-stone-500 focus:border-brand-primary/50 focus:ring-4 focus:ring-brand-primary/10"
                   value={form.title}
                   maxLength={120}
+                  required
+                  aria-invalid={Boolean(formFieldErrors.title)}
+                  aria-describedby={
+                    formFieldErrors.title ? "task-title-error" : undefined
+                  }
                   onChange={(event) => {
                     setForm((currentForm) => ({
                       ...currentForm,
@@ -685,25 +790,46 @@ export function TaskDashboard({
                       // Input changes invalidate the explanation generated from old data.
                       priorityReason: "",
                     }))
+                    setFormFieldErrors((current) => ({
+                      ...current,
+                      title: undefined,
+                    }))
                     setSuggestionError(null)
                   }}
                   placeholder="Example: Finish project proposal"
                 />
+                {formFieldErrors.title ? (
+                  <span
+                    id="task-title-error"
+                    className="mt-2 block text-xs font-medium text-red-200"
+                  >
+                    {formFieldErrors.title}
+                  </span>
+                ) : null}
               </label>
 
-              <label>
+              <label htmlFor="task-priority">
                 <span className="text-sm font-medium text-stone-300">
                   Priority
                 </span>
                 <select
+                  id="task-priority"
                   className={`${fieldClass} mt-2`}
                   value={form.priority}
+                  aria-invalid={Boolean(formFieldErrors.priority)}
+                  aria-describedby={
+                    formFieldErrors.priority ? "task-priority-error" : undefined
+                  }
                   onChange={(event) => {
                     setForm((currentForm) => ({
                       ...currentForm,
                       priority: event.target.value as TaskPriority,
                       // Manual override keeps the human in control and clears stale AI rationale.
                       priorityReason: "",
+                    }))
+                    setFormFieldErrors((current) => ({
+                      ...current,
+                      priority: undefined,
                     }))
                     setSuggestionError(null)
                   }}
@@ -712,45 +838,90 @@ export function TaskDashboard({
                   <option value="Medium">Medium</option>
                   <option value="Low">Low</option>
                 </select>
+                {formFieldErrors.priority ? (
+                  <span
+                    id="task-priority-error"
+                    className="mt-2 block text-xs font-medium text-red-200"
+                  >
+                    {formFieldErrors.priority}
+                  </span>
+                ) : null}
               </label>
 
-              <label>
+              <label htmlFor="task-due-date">
                 <span className="text-sm font-medium text-stone-300">
                   Due date
                 </span>
                 <input
+                  id="task-due-date"
                   type="date"
                   className={`${fieldClass} mt-2`}
                   value={form.dueDate}
+                  aria-invalid={Boolean(formFieldErrors.dueDate)}
+                  aria-describedby={
+                    formFieldErrors.dueDate ? "task-due-date-error" : undefined
+                  }
                   onChange={(event) => {
                     setForm((currentForm) => ({
                       ...currentForm,
                       dueDate: event.target.value,
                       priorityReason: "",
                     }))
+                    setFormFieldErrors((current) => ({
+                      ...current,
+                      dueDate: undefined,
+                    }))
                     setSuggestionError(null)
                   }}
                 />
+                {formFieldErrors.dueDate ? (
+                  <span
+                    id="task-due-date-error"
+                    className="mt-2 block text-xs font-medium text-red-200"
+                  >
+                    {formFieldErrors.dueDate}
+                  </span>
+                ) : null}
               </label>
 
-              <label className="lg:col-span-4">
+              <label className="lg:col-span-4" htmlFor="task-description">
                 <span className="text-sm font-medium text-stone-300">
                   Description
                 </span>
                 <textarea
+                  id="task-description"
                   className={`${fieldClass} mt-2 min-h-28 resize-y`}
                   value={form.description}
                   maxLength={1000}
+                  required
+                  aria-invalid={Boolean(formFieldErrors.description)}
+                  aria-describedby={
+                    formFieldErrors.description
+                      ? "task-description-error"
+                      : undefined
+                  }
                   onChange={(event) => {
                     setForm((currentForm) => ({
                       ...currentForm,
                       description: event.target.value,
                       priorityReason: "",
                     }))
+                    setFormFieldErrors((current) => ({
+                      ...current,
+                      description: undefined,
+                    }))
                     setSuggestionError(null)
                   }}
                   placeholder="What needs to happen?"
                 />
+                {formFieldErrors.description ? (
+                  <span
+                    id="task-description-error"
+                    className="mt-2 block text-xs font-medium text-red-200"
+                  >
+                    {formFieldErrors.description}
+                  </span>
+                ) : null}
               </label>
 
               <div className="rounded-2xl border border-violet-200/20 bg-violet-300/6 p-4 lg:col-span-4">
@@ -798,7 +969,10 @@ export function TaskDashboard({
 
               <div className="lg:col-span-4">
                 {formError ? (
-                  <p className="mb-3 text-sm font-medium text-red-200">
+                  <p
+                    className="mb-3 text-sm font-medium text-red-200"
+                    role="alert"
+                  >
                     {formError}
                   </p>
                 ) : null}
@@ -860,6 +1034,8 @@ export function TaskDashboard({
                   isPlanActionDisabled={
                     generatingTaskId !== null || isPlanningDay
                   }
+                  pendingAction={pendingTaskActions[task.id] ?? null}
+                  taskActionError={taskActionErrors[task.id] ?? null}
                   planError={
                     planError?.taskId === task.id ? planError.message : null
                   }

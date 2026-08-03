@@ -49,11 +49,13 @@ type TaskCardProps = {
   task: Task
   // The card displays buttons, but the dashboard owns the actual state changes.
   onDelete: (taskId: string) => void
-  onEdit: (task: Task) => void
+  onEdit: (task: Task, trigger: HTMLButtonElement) => void
   onGeneratePlan: (taskId: string) => void
   onToggleComplete: (taskId: string) => void
   isGeneratingPlan: boolean
   isPlanActionDisabled: boolean
+  pendingAction: "delete" | "toggle" | null
+  taskActionError: string | null
   planError: string | null
   focusPosition?: number
 }
@@ -66,6 +68,8 @@ export function TaskCard({
   onToggleComplete,
   isGeneratingPlan,
   isPlanActionDisabled,
+  pendingAction,
+  taskActionError,
   planError,
   focusPosition,
 }: TaskCardProps) {
@@ -154,6 +158,12 @@ export function TaskCard({
         </p>
       ) : null}
 
+      {taskActionError ? (
+        <p className="mt-4 text-sm font-medium text-red-200" role="alert">
+          {taskActionError}
+        </p>
+      ) : null}
+
       <div className="mt-6 flex flex-wrap gap-2 border-t border-white/10 pt-4">
         <Button
           type="button"
@@ -164,19 +174,27 @@ export function TaskCard({
             !isDone &&
               "bg-brand-primary text-stone-950 hover:bg-brand-primary-hover"
           )}
-          disabled={isGeneratingPlan}
+          disabled={isGeneratingPlan || pendingAction !== null}
           onClick={() => onToggleComplete(task.id)}
         >
-          <CheckCircle2 />
-          {isDone ? "Reopen" : "Complete"}
+          {pendingAction === "toggle" ? (
+            <LoaderCircle className="animate-spin" />
+          ) : (
+            <CheckCircle2 />
+          )}
+          {pendingAction === "toggle"
+            ? "Updating..."
+            : isDone
+              ? "Reopen"
+              : "Complete"}
         </Button>
         <Button
           type="button"
           variant="outline"
           size="sm"
-          disabled={isGeneratingPlan}
+          disabled={isGeneratingPlan || pendingAction !== null}
           className="rounded-full border-app-border bg-white/5 text-stone-100 hover:bg-white/10"
-          onClick={() => onEdit(task)}
+          onClick={(event) => onEdit(task, event.currentTarget)}
         >
           <Pencil />
           Edit
@@ -185,19 +203,23 @@ export function TaskCard({
           type="button"
           variant="outline"
           size="sm"
-          disabled={isGeneratingPlan}
+          disabled={isGeneratingPlan || pendingAction !== null}
           className="rounded-full border-red-200/20 bg-red-500/10 text-red-100 hover:bg-red-500/20"
           onClick={() => onDelete(task.id)}
         >
-          <Trash2 />
-          Delete
+          {pendingAction === "delete" ? (
+            <LoaderCircle className="animate-spin" />
+          ) : (
+            <Trash2 />
+          )}
+          {pendingAction === "delete" ? "Deleting..." : "Delete"}
         </Button>
         {!isDone ? (
           <Button
             type="button"
             variant="outline"
             size="sm"
-            disabled={isPlanActionDisabled}
+            disabled={isPlanActionDisabled || pendingAction !== null}
             className="rounded-full border-brand-primary/25 bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/20"
             onClick={() => onGeneratePlan(task.id)}
           >

@@ -1,6 +1,7 @@
 import { CalendarCheck2, CircleAlert, ListTodo, Target } from "lucide-react"
 
 import type { DailyPlanView } from "@/lib/daily-plan"
+import { getProgressMetrics } from "@/lib/tasks/progress"
 import { cn } from "@/lib/utils"
 
 import type { Task } from "./task-card"
@@ -48,52 +49,25 @@ function MetricCard({
   )
 }
 
-function getUtcWeekStart(now: Date) {
-  // Convert Sunday=0 into six elapsed days and Monday=1 into zero, then
-  // construct midnight with Date.UTC so browser timezone cannot move the week.
-  const daysSinceMonday = (now.getUTCDay() + 6) % 7
-
-  return Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate() - daysSinceMonday
-  )
-}
-
 export function ProgressDashboard({
   tasks,
   dailyPlan,
   currentUtcDateKey,
 }: ProgressDashboardProps) {
-  const now = new Date()
-  const nowTime = now.getTime()
-  const weekStartTime = getUtcWeekStart(now)
-  const activeTasks = tasks.filter((task) => task.status !== "Done")
-  const overdueCount = activeTasks.filter(
-    (task) => task.dueDateInput && task.dueDateInput < currentUtcDateKey
-  ).length
-  const completedThisWeek = tasks.filter((task) => {
-    if (task.status !== "Done" || !task.completedAt) {
-      return false
-    }
-
-    const completedTime = Date.parse(task.completedAt)
-    return completedTime >= weekStartTime && completedTime <= nowTime
-  }).length
-  // A saved plan is a dated snapshot. Ignore older snapshots so yesterday's
-  // progress never appears as today's focus metric.
-  const tasksById = new Map(tasks.map((task) => [task.id, task]))
-  const currentPlanItems =
-    dailyPlan?.planDate === currentUtcDateKey
-      ? dailyPlan.items.filter((item) => tasksById.has(item.taskId))
-      : []
-  const completedPlanItems = currentPlanItems.filter(
-    (item) => tasksById.get(item.taskId)?.status === "Done"
-  ).length
-  const hasCurrentPlan = currentPlanItems.length > 0
-  const focusPercentage = hasCurrentPlan
-    ? Math.round((completedPlanItems / currentPlanItems.length) * 100)
-    : 0
+  const {
+    activeCount,
+    overdueCount,
+    completedThisWeek,
+    currentPlanItemCount,
+    completedPlanItemCount,
+    hasCurrentPlan,
+    focusPercentage,
+  } = getProgressMetrics({
+    tasks,
+    dailyPlan,
+    currentUtcDateKey,
+    now: new Date(),
+  })
 
   return (
     <section
@@ -103,7 +77,7 @@ export function ProgressDashboard({
       <MetricCard
         icon={ListTodo}
         label="Active"
-        value={activeTasks.length}
+        value={activeCount}
         detail="Tasks still in motion"
       />
       <MetricCard
@@ -126,7 +100,7 @@ export function ProgressDashboard({
         value={hasCurrentPlan ? `${focusPercentage}%` : "N/A"}
         detail={
           hasCurrentPlan
-            ? `${completedPlanItems} of ${currentPlanItems.length} planned tasks done`
+            ? `${completedPlanItemCount} of ${currentPlanItemCount} planned tasks done`
             : "No focus plan saved for today"
         }
         tone={focusPercentage === 100 ? "success" : "default"}

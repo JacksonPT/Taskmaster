@@ -9,6 +9,7 @@ import { z } from "zod"
 export const completionPlanSchema = z.object({
   summary: z
     .string()
+    .trim()
     .min(1)
     .max(180)
     .describe("A concise overview of how to approach the task."),
@@ -16,6 +17,7 @@ export const completionPlanSchema = z.object({
     .array(
       z
         .string()
+        .trim()
         .min(1)
         .max(180)
         .describe("One concrete action that moves the task toward completion.")
@@ -34,12 +36,17 @@ export type CompletionPlanInput = {
   dueDate: string
 }
 
+type CompletionTextGenerator = (
+  options: Parameters<typeof generateText>[0]
+) => Promise<{ output: unknown }>
+
 // Gemini receives one persisted task and returns one small action plan. This
 // remains separate from Module 11, where AI will compare a complete task list.
 export async function generateCompletionPlan(
-  input: CompletionPlanInput
+  input: CompletionPlanInput,
+  generator = generateText as unknown as CompletionTextGenerator
 ): Promise<CompletionPlan> {
-  const { output } = await generateText({
+  const { output } = await generator({
     // Match Module 9's working model alias so both AI features use the same
     // Google account, free-tier quota, and provider configuration.
     model: google("gemini-flash-latest"),
@@ -59,10 +66,5 @@ export async function generateCompletionPlan(
     prompt: `Create a completion plan for this task data:\n${JSON.stringify(input, null, 2)}`,
   })
 
-  // Normalize whitespace and validate once more after normalization so empty
-  // strings cannot slip through if a provider returns whitespace-only content.
-  return completionPlanSchema.parse({
-    summary: output.summary.trim(),
-    steps: output.steps.map((step) => step.trim()),
-  })
+  return completionPlanSchema.parse(output)
 }

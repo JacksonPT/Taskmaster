@@ -15,11 +15,16 @@ import {
 } from "@/lib/ai/task-priority"
 import {
   getUtcDateKey,
-  MAX_DAILY_PLAN_GENERATIONS,
   MAX_DAILY_PLAN_TASKS,
   type DailyPlanItemView,
   type DailyPlanView,
 } from "@/lib/daily-plan"
+import {
+  commitDailyPlanGeneration,
+  releaseDailyPlanReservation,
+  reorderDailyPlanForUser,
+  reserveDailyPlanGeneration,
+} from "@/lib/daily-plan-persistence"
 import { prisma } from "@/lib/prisma"
 
 const TASKS_PATH = "/tasks"
@@ -86,106 +91,6 @@ export type ReorderDailyPlanActionResult =
       success: false
       message: string
     }
-
-const DAILY_PLAN_RESERVATION_TTL_MS = 5 * 60 * 1000
-
-// Updating the usage row serializes reservation decisions for this user/day.
-// Each accepted request receives its own expiring reservation id.
-async function reserveDailyPlanGeneration(userId: string, usageDate: string) {
-  const reservationTime = new Date()
-  const staleBefore = new Date(
-    reservationTime.getTime() - DAILY_PLAN_RESERVATION_TTL_MS
-  )
-
-  await prisma.dailyPlanUsage.upsert({
-    where: {
-      userId_usageDate: {
-        userId,
-        usageDate,
-      },
-    },
-    create: {
-      userId,
-      usageDate,
-    },
-    update: {},
-  })
-
-  return prisma.$transaction(async (transaction) => {
-    // PostgreSQL holds this row lock until the transaction ends, preventing two
-    // tabs from both deciding the same final slot is available.
-    const usage = await transaction.dailyPlanUsage.update({
-      where: {
-        userId_usageDate: {
-          userId,
-          usageDate,
-        },
-      },
-      data: {
-        updatedAt: reservationTime,
-      },
-      select: {
-        generationCount: true,
-      },
-    })
-
-    // A terminated process cannot clean up. Removing only stale reservation rows
-    // restores availability without touching a newer request's unique lease.
-    await transaction.dailyPlanReservation.deleteMany({
-      where: {
-        userId,
-        usageDate,
-        createdAt: {
-          lt: staleBefore,
-        },
-      },
-    })
-
-    const pendingCount = await transaction.dailyPlanReservation.count({
-      where: {
-        userId,
-        usageDate,
-      },
-    })
-
-    if (usage.generationCount + pendingCount >= MAX_DAILY_PLAN_GENERATIONS) {
-      return {
-        reservationId: null,
-        generationsUsedToday: usage.generationCount,
-      }
-    }
-
-    const reservation = await transaction.dailyPlanReservation.create({
-      data: {
-        userId,
-        usageDate,
-      },
-      select: {
-        id: true,
-      },
-    })
-
-    return {
-      reservationId: reservation.id,
-      generationsUsedToday: usage.generationCount,
-    }
-  })
-}
-
-// Normal provider failures release only the exact request's reservation.
-async function releaseDailyPlanReservation(
-  reservationId: string,
-  userId: string,
-  usageDate: string
-) {
-  await prisma.dailyPlanReservation.deleteMany({
-    where: {
-      id: reservationId,
-      userId,
-      usageDate,
-    },
-  })
-}
 
 // The Server Action is the trusted bridge between browser interaction and the
 // external AI provider. The Gemini API key never crosses this server boundary.
@@ -367,24 +272,41 @@ export async function createDailyPlan(): Promise<DailyPlanGenerationActionResult
     }
   }
 
-  const tasks = await prisma.task.findMany({
-    where: {
-      userId,
-      status: {
-        not: "DONE",
+  let tasks: {
+    id: string
+    title: string
+    description: string
+    priority: string
+    dueDate: Date | null
+  }[]
+
+  try {
+    tasks = await prisma.task.findMany({
+      where: {
+        userId,
+        status: {
+          not: "DONE",
+        },
       },
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      priority: true,
-      dueDate: true,
-    },
-  })
+      orderBy: {
+        createdAt: "asc",
+      },
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        priority: true,
+        dueDate: true,
+      },
+    })
+  } catch (error) {
+    console.error("Daily plan task lookup failed", error)
+
+    return {
+      success: false,
+      message: "Could not load tasks for daily planning. Try again shortly.",
+    }
+  }
 
   // Return before reserving quota when there is nothing valid to send Gemini.
   if (tasks.length === 0) {
@@ -444,106 +366,12 @@ export async function createDailyPlan(): Promise<DailyPlanGenerationActionResult
 
     const generatedAt = new Date()
 
-    // Replacing the header and all ordered items in one transaction prevents a
-    // refresh from observing a new summary paired with an old task order.
-    const savedResult = await prisma.$transaction(async (transaction) => {
-      // Lock the usage row before checking this exact reservation. Expiration
-      // and another successful completion must wait for this decision.
-      const usageBeforeCompletion = await transaction.dailyPlanUsage.update({
-        where: {
-          userId_usageDate: {
-            userId,
-            usageDate,
-          },
-        },
-        data: {
-          updatedAt: generatedAt,
-        },
-        select: {
-          generationCount: true,
-        },
-      })
-
-      const activeReservation =
-        await transaction.dailyPlanReservation.findFirst({
-          where: {
-            id: reservationId,
-            userId,
-            usageDate,
-          },
-          select: {
-            id: true,
-          },
-        })
-
-      if (
-        !activeReservation ||
-        usageBeforeCompletion.generationCount >= MAX_DAILY_PLAN_GENERATIONS
-      ) {
-        throw new Error("Daily plan reservation expired before completion.")
-      }
-
-      const plan = await transaction.dailyPlan.upsert({
-        where: {
-          userId,
-        },
-        create: {
-          userId,
-          summary: output.summary,
-          planDate: usageDate,
-          generatedAt,
-        },
-        update: {
-          summary: output.summary,
-          planDate: usageDate,
-          generatedAt,
-        },
-      })
-
-      await transaction.dailyPlanItem.deleteMany({
-        where: {
-          dailyPlanId: plan.id,
-        },
-      })
-
-      await transaction.dailyPlanItem.createMany({
-        data: output.items.map((item, index) => ({
-          dailyPlanId: plan.id,
-          taskId: item.taskId,
-          position: index + 1,
-          reason: item.reason,
-        })),
-      })
-
-      // Mark the reserved call successful in the same transaction as the plan.
-      // Either both records commit or neither does.
-      await transaction.dailyPlanReservation.delete({
-        where: {
-          id: reservationId,
-        },
-      })
-
-      const usage = await transaction.dailyPlanUsage.update({
-        where: {
-          userId_usageDate: {
-            userId,
-            usageDate,
-          },
-        },
-        data: {
-          generationCount: {
-            increment: 1,
-          },
-        },
-        select: {
-          generationCount: true,
-        },
-      })
-
-      return {
-        plan,
-        generationsUsedToday: usage.generationCount,
-      }
+    const savedResult = await commitDailyPlanGeneration({
+      userId,
+      usageDate,
+      reservationId,
+      output,
+      generatedAt,
     })
 
     shouldReleaseReservation = false
@@ -615,78 +443,17 @@ export async function reorderDailyPlan(
     }
   }
 
-  const plan = await prisma.dailyPlan.findUnique({
-    where: {
-      userId,
-    },
-    include: {
-      items: true,
-    },
-  })
-
-  if (!plan) {
-    return {
-      success: false,
-      message: "Generate a daily plan before reordering tasks.",
-    }
-  }
-
-  const reasonByTaskId = new Map(
-    plan.items.map((item) => [item.taskId, item.reason])
-  )
-
-  if (
-    plan.items.length !== parsedTaskIds.data.length ||
-    parsedTaskIds.data.some((taskId) => !reasonByTaskId.has(taskId))
-  ) {
-    return {
-      success: false,
-      message:
-        "The plan changed before the new order could be saved. Refresh and try again.",
-    }
-  }
-
-  const reorderedItems = parsedTaskIds.data.map((taskId, index) => ({
-    taskId,
-    position: index + 1,
-    // The existence check above proves this lookup is defined.
-    reason: reasonByTaskId.get(taskId)!,
-  }))
-
   try {
-    await prisma.$transaction(async (transaction) => {
-      // Updating the parent row first locks this exact snapshot. If regeneration
-      // already replaced it, the stale reorder is rejected instead of mixing plans.
-      const claimedPlan = await transaction.dailyPlan.updateMany({
-        where: {
-          id: plan.id,
-          userId,
-          updatedAt: plan.updatedAt,
-        },
-        data: {
-          updatedAt: new Date(),
-        },
-      })
+    const result = await reorderDailyPlanForUser(userId, parsedTaskIds.data)
 
-      if (claimedPlan.count !== 1) {
-        throw new Error("DAILY_PLAN_CHANGED")
+    if (result.status === "missing") {
+      return {
+        success: false,
+        message: "Generate a daily plan before reordering tasks.",
       }
+    }
 
-      await transaction.dailyPlanItem.deleteMany({
-        where: {
-          dailyPlanId: plan.id,
-        },
-      })
-
-      await transaction.dailyPlanItem.createMany({
-        data: reorderedItems.map((item) => ({
-          ...item,
-          dailyPlanId: plan.id,
-        })),
-      })
-    })
-  } catch (error) {
-    if (error instanceof Error && error.message === "DAILY_PLAN_CHANGED") {
+    if (result.status === "changed") {
       return {
         success: false,
         message:
@@ -694,18 +461,18 @@ export async function reorderDailyPlan(
       }
     }
 
+    revalidatePath(TASKS_PATH)
+
+    return {
+      success: true,
+      items: result.items,
+    }
+  } catch (error) {
     console.error("Daily plan reorder failed", error)
 
     return {
       success: false,
       message: "Could not save the new task order. Try again shortly.",
     }
-  }
-
-  revalidatePath(TASKS_PATH)
-
-  return {
-    success: true,
-    items: reorderedItems,
   }
 }

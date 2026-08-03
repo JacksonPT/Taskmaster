@@ -2,71 +2,13 @@ import "server-only"
 
 import { google } from "@ai-sdk/google"
 import { generateText, Output } from "ai"
-import { z } from "zod"
 
-import { MAX_DAILY_PLAN_TASKS } from "@/lib/daily-plan"
-
-// Gemini returns task ids rather than copying task content back to the app. The
-// ordered array is the recommendation, while each reason explains that position.
-export const dailyPlanOutputSchema = z.object({
-  summary: z
-    .string()
-    .min(1)
-    .max(240)
-    .describe("A concise overview of the recommended focus strategy."),
-  items: z
-    .array(
-      z.object({
-        taskId: z
-          .string()
-          .min(1)
-          .describe("An unchanged id copied from the supplied task data."),
-        reason: z
-          .string()
-          .min(1)
-          .max(200)
-          .describe("Why this task belongs at this point in the plan."),
-      })
-    )
-    .min(1)
-    .max(MAX_DAILY_PLAN_TASKS),
-})
-
-export type DailyPlanOutput = z.infer<typeof dailyPlanOutputSchema>
-
-export type DailyPlanTaskInput = {
-  id: string
-  title: string
-  description: string
-  priority: string
-  dueDate: string
-}
-
-// Structured validation proves the shape is usable. This second validation
-// proves the semantic relationship: every input task appears exactly once.
-function validateReturnedTaskIds(
-  tasks: DailyPlanTaskInput[],
-  output: DailyPlanOutput
-) {
-  if (output.items.length !== tasks.length) {
-    throw new Error("Gemini did not return every active task.")
-  }
-
-  const expectedTaskIds = new Set(tasks.map((task) => task.id))
-  const returnedTaskIds = new Set<string>()
-
-  for (const item of output.items) {
-    if (!expectedTaskIds.has(item.taskId)) {
-      throw new Error("Gemini returned an unknown task id.")
-    }
-
-    if (returnedTaskIds.has(item.taskId)) {
-      throw new Error("Gemini returned a task more than once.")
-    }
-
-    returnedTaskIds.add(item.taskId)
-  }
-}
+import {
+  dailyPlanOutputSchema,
+  validateReturnedTaskIds,
+  type DailyPlanOutput,
+  type DailyPlanTaskInput,
+} from "@/lib/ai/daily-plan-validation"
 
 // One model call compares the full active list. Displaying, reordering, and
 // saving the validated result do not consume any additional AI quota.
@@ -91,14 +33,7 @@ export async function generateDailyPlan(
     prompt: `Create a daily focus plan from this active task data:\n${JSON.stringify(tasks, null, 2)}`,
   })
 
-  const normalizedOutput = dailyPlanOutputSchema.parse({
-    summary: output.summary.trim(),
-    items: output.items.map((item) => ({
-      // IDs are intentionally not normalized; Gemini must copy them exactly.
-      taskId: item.taskId,
-      reason: item.reason.trim(),
-    })),
-  })
+  const normalizedOutput = dailyPlanOutputSchema.parse(output)
 
   validateReturnedTaskIds(tasks, normalizedOutput)
 
